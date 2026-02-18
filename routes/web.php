@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
+use App\Http\Controllers\Master\MasterPtPackageController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -21,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
         Route::resource('gym', MasterGymController::class);
         Route::resource('membership', MasterMembershipController::class);
+        Route::resource('personal-trainer-package', MasterPtPackageController::class);
     });
 });
 

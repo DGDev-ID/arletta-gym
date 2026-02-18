@@ -18,6 +18,7 @@ import AppLogo from './AppLogo.vue';
 import { dashboard } from '@/routes';
 import gym from '@/routes/master/gym';
 import membership from '@/routes/master/membership';
+import personalTrainerPackage from '@/routes/master/personal-trainer-package';
 
 const mainNavItems: NavItem[] = [
     {
@@ -40,7 +41,7 @@ const masterDataNavItems: NavItem[] = [
     },
     {
         title: "Personal Trainer Package",
-        href: "#",
+        href: personalTrainerPackage.index(),
         icon: Package, 
     },
 ];

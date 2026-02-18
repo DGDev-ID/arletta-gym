@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('master_pt_packages', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
             $table->foreignId('gym_id')->constrained('master_gyms')->onDelete('cascade');
             $table->integer('max_person');
             $table->integer('duration_in_sessions');

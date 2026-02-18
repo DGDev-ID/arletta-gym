@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class MasterPtPackage extends Model
 {
     protected $fillable = [
+        'name',
         'gym_id',
         'max_person',
         'duration_in_sessions',
