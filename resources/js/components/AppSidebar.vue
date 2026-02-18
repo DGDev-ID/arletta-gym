@@ -16,9 +16,8 @@ import {
 import { type NavItem } from '@/types';
 import AppLogo from './AppLogo.vue';
 import { dashboard } from '@/routes';
-import gym from '@/routes/master/gym';
-import membership from '@/routes/master/membership';
-import personalTrainerPackage from '@/routes/master/personal-trainer-package';
+import management from '@/routes/management';
+import master from '@/routes/master';
 
 const mainNavItems: NavItem[] = [
     {
@@ -31,17 +30,17 @@ const mainNavItems: NavItem[] = [
 const masterDataNavItems: NavItem[] = [
     {
         title: "Gym",
-        href: gym.index(),
+        href: master.gym.index(),
         icon: Dumbbell,
     },
     {
         title: "Membership",
-        href: membership.index(),
+        href: master.membership.index(),
         icon: CreditCard, 
     },
     {
         title: "Personal Trainer Package",
-        href: personalTrainerPackage.index(),
+        href: master.personalTrainerPackage.index(),
         icon: Package, 
     },
 ];
@@ -49,7 +48,7 @@ const masterDataNavItems: NavItem[] = [
 const managementNavItems: NavItem[] = [
     {
         title: "Admin",
-        href: "#",
+        href: management.admin.index(),
         icon: ShieldCheck,
     },
     {
