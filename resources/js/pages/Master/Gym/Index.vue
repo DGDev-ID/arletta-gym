@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import { type BreadcrumbItem } from '@/types';
@@ -11,6 +11,12 @@ const breadcrumbItems: BreadcrumbItem[] = [
         href: '/master/gym',
     },
 ];
+
+const deleteGym = (id: number) => {
+    if (confirm('Apakah Anda yakin ingin menghapus gym ini?')) {
+        router.delete(`/master/gym/${id}`);
+    }
+};
 
 defineProps<{
     gyms: PaginatedData<Gym>;
@@ -32,7 +38,7 @@ defineProps<{
 
                     <Link href="/master/gym/create"
                         class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
-                        + Tambah Gym
+                        Tambah Gym
                     </Link>
                 </div>
 
@@ -64,11 +70,15 @@ defineProps<{
                                     </span>
                                 </td>
 
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right space-x-3">
                                     <Link :href="`/master/gym/${gym.id}/edit`"
                                         class="text-primary hover:underline text-sm font-medium">
                                         Edit
                                     </Link>
+
+                                    <button @click="deleteGym(gym.id)" class="cursor-pointer text-destructive hover:underline">
+                                        Hapus
+                                    </button>
                                 </td>
                             </tr>
 

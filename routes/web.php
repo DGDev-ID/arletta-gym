@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Master\MasterGymController;
+use App\Http\Controllers\Master\MasterMembershipController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -17,7 +18,10 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
-    Route::resource('master/gym', MasterGymController::class)->names('master.gym');
+    Route::prefix('master')->name('master.')->group(function () {
+        Route::resource('gym', MasterGymController::class);
+        Route::resource('membership', MasterMembershipController::class);
+    });
 });
 
 require __DIR__ . '/settings.php';

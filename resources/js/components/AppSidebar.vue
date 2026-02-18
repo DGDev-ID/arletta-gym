@@ -17,6 +17,7 @@ import { type NavItem } from '@/types';
 import AppLogo from './AppLogo.vue';
 import { dashboard } from '@/routes';
 import gym from '@/routes/master/gym';
+import membership from '@/routes/master/membership';
 
 const mainNavItems: NavItem[] = [
     {
@@ -34,7 +35,7 @@ const masterDataNavItems: NavItem[] = [
     },
     {
         title: "Membership",
-        href: "#",
+        href: membership.index(),
         icon: CreditCard, 
     },
     {
