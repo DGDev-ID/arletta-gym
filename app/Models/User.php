@@ -72,9 +72,9 @@ class User extends Authenticatable
         return $this->hasMany(PtImgUrl::class, 'pt_id');
     }
 
-    public function gymAdmins()
+    public function gyms()
     {
-        return $this->hasMany(GymAdmin::class, 'admin_id');
+        return $this->belongsToMany(MasterGym::class, 'gym_admins', 'admin_id', 'gym_id');
     }
 
     public function userPtPackages()

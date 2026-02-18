@@ -16,6 +16,7 @@ import {
 import { type NavItem } from '@/types';
 import AppLogo from './AppLogo.vue';
 import { dashboard } from '@/routes';
+import gym from '@/routes/master/gym';
 
 const mainNavItems: NavItem[] = [
     {
@@ -28,7 +29,7 @@ const mainNavItems: NavItem[] = [
 const masterDataNavItems: NavItem[] = [
     {
         title: "Gym",
-        href: "#",
+        href: gym.index(),
         icon: Dumbbell,
     },
     {
