@@ -50,4 +50,55 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    // Relations
+    public function userDetail() 
+    {
+        return $this->hasOne(UserDetail::class);
+    }
+
+    public function gymPts()
+    {
+        return $this->hasMany(GymPt::class, 'pt_id');
+    }
+
+    public function ptDescriptions()
+    {
+        return $this->hasMany(PtDescription::class, 'pt_id');
+    }
+
+    public function ptImgUrls()
+    {
+        return $this->hasMany(PtImgUrl::class, 'pt_id');
+    }
+
+    public function gymAdmins()
+    {
+        return $this->hasMany(GymAdmin::class, 'admin_id');
+    }
+
+    public function userPtPackages()
+    {
+        return $this->hasMany(UserPtPackage::class, 'pt_id');
+    }
+
+    public function userPtPackageMembers()
+    {
+        return $this->hasMany(UserPtPackageMember::class, 'user_id');
+    }
+
+    public function userPtPackageDetails()
+    {
+        return $this->hasMany(UserPtPackageDetail::class, 'user_id');
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'user_id');
+    }
+
+    public function transactionDetails()
+    {
+        return $this->hasMany(TransactionDetail::class, 'confirmed_by');
+    }
 }
