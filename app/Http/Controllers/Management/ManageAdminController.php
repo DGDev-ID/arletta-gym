@@ -14,8 +14,8 @@ class ManageAdminController extends Controller
      */
     public function index()
     {
-        $admins = User::role('Admin')->latest()->get();
-
+        $admins = User::role('Admin')->with('gyms')->latest()->get();
+        // return $admins;
         return Inertia::render('Management/Admin/Index', [
             'admins' => $admins
         ]);

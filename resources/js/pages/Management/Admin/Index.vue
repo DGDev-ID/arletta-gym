@@ -11,6 +11,7 @@ interface User {
     id: number;
     name: string;
     email: string;
+    gyms?: any[];
 }
 
 const props = defineProps<{
@@ -114,6 +115,7 @@ const revokeAdmin = (id: number) => {
                                 <th class="px-6 py-4">Nama</th>
                                 <th class="px-6 py-4">Email</th>
                                 <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Plot Gym</th>
                                 <th class="px-6 py-4 text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -125,6 +127,13 @@ const revokeAdmin = (id: number) => {
                                     <span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider">
                                         Admin Active
                                     </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <ul>
+                                        <li v-for="gym in admin.gyms" :key="gym.id" class="text-xs text-muted-foreground">
+                                            {{ gym.name }}
+                                        </li>
+                                    </ul>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <button @click="revokeAdmin(admin.id)" class="text-destructive hover:underline font-medium">
