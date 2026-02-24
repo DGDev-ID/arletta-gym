@@ -13,6 +13,11 @@ export interface UserAdmin {
     name: string;
 }
 
+export interface PersonalTrainer {
+    id: number;
+    name: string;
+}
+
 export interface Gym {
     id: number;
     name: string;
@@ -22,6 +27,7 @@ export interface Gym {
     start_access: string;
     gym_images?: GymImage[];
     admins?: UserAdmin[];
+    personal_trainers?: PersonalTrainer[];
 }
 
 export interface PaginatedData<T> {

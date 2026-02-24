@@ -14,6 +14,7 @@ import { type BreadcrumbItem } from '@/types';
 const props = defineProps<{
     gym: Gym;
     users: { id: number; name: string }[];
+    personalTrainers: { id: number; name: string }[];
 }>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -29,6 +30,13 @@ const adminOptions = computed(() =>
     }))
 );
 
+const personalTrainerOptions = computed(() =>
+    props.personalTrainers.map((user) => ({
+        label: user.name,
+        value: user.id,
+    }))
+);
+
 const currentImages = ref<GymImage[]>(props.gym.gym_images || []);
 
 const form = useForm({
@@ -39,6 +47,7 @@ const form = useForm({
     description: props.gym.description ?? '',
     start_access: props.gym.start_access,
     admin_ids: props.gym.admins?.map((admin) => admin.id) || [],
+    personal_trainer_ids: props.gym.personal_trainers?.map((trainer) => trainer.id) || [],
     images: [] as File[],
     deleted_image_ids: [] as number[],
 });
@@ -108,6 +117,12 @@ const submit = () => {
                             <label class="text-sm font-medium">Pilih Admin</label>
                             <MultipleSelect v-model="form.admin_ids" :options="adminOptions"
                                 placeholder="Cari admin..." />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Pilih Personal Trainer</label>
+                            <MultipleSelect v-model="form.personal_trainer_ids" :options="personalTrainerOptions"
+                                placeholder="Cari personal trainer..." />
                         </div>
 
                         <div class="pt-4 border-t space-y-4">

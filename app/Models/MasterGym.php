@@ -15,11 +15,6 @@ class MasterGym extends Model
     ];
 
     // Relations
-    public function gymPts()
-    {
-        return $this->hasMany(GymPt::class, 'gym_id');
-    }
-
     public function ptDescriptions()
     {
         return $this->hasMany(PtDescription::class, 'gym_id');
@@ -38,6 +33,11 @@ class MasterGym extends Model
     public function admins()
     {
         return $this->belongsToMany(User::class, 'gym_admins', 'gym_id', 'admin_id');
+    }
+
+    public function personalTrainers()
+    {
+        return $this->belongsToMany(User::class, 'gym_pts', 'gym_id', 'pt_id');
     }
 
     public function memberships()

@@ -13,7 +13,7 @@ class MasterGymController extends Controller
 {
     public function index()
     {
-        $gyms = MasterGym::withCount(['gymImages', 'admins'])->latest()->paginate(10);
+        $gyms = MasterGym::withCount(['gymImages', 'admins', 'personalTrainers'])->latest()->paginate(10);
 
         return Inertia::render('Master/Gym/Index', [
             'gyms' => $gyms
@@ -23,7 +23,8 @@ class MasterGymController extends Controller
     public function create()
     {
         return Inertia::render('Master/Gym/Create', [
-            'users' => User::role('Admin')->select('id', 'name')->get()
+            'users' => User::role('Admin')->select('id', 'name')->get(),
+            'personalTrainers' => User::role('Personal Trainer')->select('id', 'name')->get(),
         ]);
     }
 
@@ -37,6 +38,8 @@ class MasterGymController extends Controller
             'start_access' => 'required|date',
             'admin_ids' => 'nullable|array',
             'admin_ids.*' => 'exists:users,id',
+            'personal_trainer_ids' => 'nullable|array',
+            'personal_trainer_ids.*' => 'exists:users,id',
         ]);
 
         $gym = MasterGym::create($validated);
@@ -45,16 +48,22 @@ class MasterGymController extends Controller
             $gym->admins()->attach($validated['admin_ids']);
         }
 
+        if (!empty($validated['personal_trainer_ids'])) {
+            $gym->personalTrainers()->attach($validated['personal_trainer_ids']);
+        }
+
         return redirect()->route('master.gym.index')->with('success', 'Gym berhasil ditambahkan.');
     }
 
     public function edit(MasterGym $gym)
     {
-        $gym->load(['gymImages', 'admins']);
+        $gym->load(['gymImages', 'admins', 'personalTrainers']);
+        // return $gym;
         
         return Inertia::render('Master/Gym/Edit', [
             'gym' => $gym,
-            'users' => User::role('Admin')->select('id', 'name')->get()
+            'users' => User::role('Admin')->select('id', 'name')->get(),
+            'personalTrainers' => User::role('Personal Trainer')->select('id', 'name')->get(),
         ]);
     }
 
@@ -68,6 +77,8 @@ class MasterGymController extends Controller
             'start_access' => 'required|date',
             'admin_ids' => 'nullable|array',
             'admin_ids.*' => 'exists:users,id',
+            'personal_trainer_ids' => 'nullable|array',
+            'personal_trainer_ids.*' => 'exists:users,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'deleted_image_ids' => 'nullable|array', 
         ]);
@@ -78,6 +89,12 @@ class MasterGymController extends Controller
             $gym->admins()->sync($validated['admin_ids']);
         } else {
             $gym->admins()->detach();
+        }
+
+        if (isset($validated['personal_trainer_ids'])) {
+            $gym->personalTrainers()->sync($validated['personal_trainer_ids']);
+        } else {
+            $gym->personalTrainers()->detach();
         }
 
         if ($request->filled('deleted_image_ids')) {
@@ -103,6 +120,9 @@ class MasterGymController extends Controller
         foreach ($gym->gymImages as $image) {
             Storage::disk('public')->delete($image->img_url);
         }
+
+        $gym->admins()->detach();
+        $gym->personalTrainers()->detach();
         
         $gym->delete();
 

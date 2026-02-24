@@ -16,6 +16,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const props = defineProps<{
     users: { id: number; name: string }[];
+    personalTrainers: { id: number; name: string }[];
 }>();
 
 const adminOptions = computed(() =>
@@ -25,6 +26,12 @@ const adminOptions = computed(() =>
     }))
 );
 
+const personalTrainerOptions = computed(() =>
+    props.personalTrainers.map((user) => ({
+        label: user.name,
+        value: user.id,
+    }))
+);
 
 const form = useForm({
     name: '',
@@ -33,6 +40,7 @@ const form = useForm({
     description: '',
     start_access: '',
     admin_ids: [] as number[],
+    personal_trainer_ids: [] as number[],
 });
 
 const submit = () => {
@@ -100,6 +108,13 @@ const submit = () => {
                                 placeholder="Cari admin..." />
                         </div>
 
+                        <!-- Personal Trainer -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Pilih Personal Trainer</label>
+
+                            <MultipleSelect v-model="form.personal_trainer_ids" :options="personalTrainerOptions"
+                                placeholder="Cari personal trainer..." />
+                        </div>
 
                         <!-- Footer -->
                         <div class="flex justify-end items-center gap-4 pt-6 border-t">

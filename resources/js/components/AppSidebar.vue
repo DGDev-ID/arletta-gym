@@ -57,7 +57,7 @@ const managementNavItems: NavItem[] = [
     },
     {
         title: "Personal Trainer",
-        href: "#",
+        href: management.personalTrainer.index(),
         icon: UserCog, 
     },
 ];
