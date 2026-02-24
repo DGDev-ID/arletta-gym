@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { Pencil, Trash2 } from 'lucide-vue-next';
 
 defineProps<{
     pt_packages: any[];
@@ -37,7 +38,8 @@ const formatCurrency = (value: number) => {
             <div class="max-w-7xl mx-auto px-6 space-y-6">
 
                 <div class="flex items-center justify-between">
-                    <Heading title="Daftar Personal Trainer Package" description="Kelola paket personal trainer gym dan promo aktif." />
+                    <Heading title="Daftar Personal Trainer Package"
+                        description="Kelola paket personal trainer gym dan promo aktif." />
                     <Link href="/master/personal-trainer-package/create"
                         class="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">
                         Tambah Personal Trainer Package
@@ -80,14 +82,22 @@ const formatCurrency = (value: number) => {
 
                                     <span v-else class="text-muted-foreground text-xs italic">-</span>
                                 </td>
-                                <td class="px-6 py-4 text-right space-x-3">
-                                    <Link :href="`/master/personal-trainer-package/${item.id}/edit`"
-                                        class="text-primary hover:underline text-sm font-medium">
-                                        Edit
-                                    </Link>
-                                    <button @click="deletePersonalTrainerPackage(item.id)" class="text-destructive hover:underline">
-                                        Hapus
-                                    </button>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end items-center gap-3">
+
+                                        <Link :href="`/master/personal-trainer-package/${item.id}/edit`"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
+                                            title="Edit Package">
+                                            <Pencil :size="16" />
+                                        </Link>
+
+                                        <button @click="deletePersonalTrainerPackage(item.id)" type="button"
+                                            class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
+                                            title="Hapus Package">
+                                            <Trash2 :size="16" />
+                                        </button>
+
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="pt_packages.length === 0">

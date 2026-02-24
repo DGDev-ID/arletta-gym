@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { Pencil, Trash2 } from 'lucide-vue-next';
 
 defineProps<{
     memberships: any[];
@@ -80,14 +81,22 @@ const formatCurrency = (value: number) => {
 
                                     <span v-else class="text-muted-foreground text-xs italic">-</span>
                                 </td>
-                                <td class="px-6 py-4 text-right space-x-3">
-                                    <Link :href="`/master/membership/${item.id}/edit`"
-                                        class="text-primary hover:underline text-sm font-medium">
-                                        Edit
-                                    </Link>
-                                    <button @click="deleteMembership(item.id)" class="text-destructive hover:underline">
-                                        Hapus
-                                    </button>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end items-center gap-3">
+
+                                        <Link :href="`/master/membership/${item.id}/edit`"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
+                                            title="Edit Membership">
+                                            <Pencil :size="16" />
+                                        </Link>
+
+                                        <button @click="deleteMembership(item.id)" type="button"
+                                            class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
+                                            title="Hapus Membership">
+                                            <Trash2 :size="16" />
+                                        </button>
+
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="memberships.length === 0">
