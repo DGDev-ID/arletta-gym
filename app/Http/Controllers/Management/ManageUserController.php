@@ -30,9 +30,30 @@ class ManageUserController extends Controller
             });
         });
 
+        // 🔥 Custom Order by Role Hierarchy (NO JOIN)
+        $query->orderByRaw("
+            FIELD(
+                (
+                    SELECT r.name
+                    FROM roles r
+                    INNER JOIN model_has_roles mhr 
+                        ON r.id = mhr.role_id
+                    WHERE mhr.model_id = users.id
+                    AND mhr.model_type = ?
+                    LIMIT 1
+                ),
+                'Super Admin',
+                'Admin',
+                'Personal Trainer',
+                'User'
+            )
+        ", [User::class]);
+
+        // Secondary order
+        $query->orderBy('users.created_at', 'desc');
+
         return Inertia::render('Management/User/Index', [
             'users' => $query
-                ->latest()
                 ->paginate(10)
                 ->withQueryString(),
 

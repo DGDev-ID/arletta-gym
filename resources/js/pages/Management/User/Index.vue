@@ -20,6 +20,10 @@ const props = defineProps<{
     };
 }>();
 
+const hasUserRole = (user: any) => {
+    return user.roles?.some((role: any) => role.name === 'User')
+}
+
 const breadcrumbItems = [
     { title: 'Management User', href: '/management/users' },
 ];
@@ -72,7 +76,7 @@ const getRoleBadgeClass = (roleName: string) => {
                         <div>
                             <Link href="/management/user/create"
                                 class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
-                            Tambah User
+                                Tambah User
                             </Link>
                         </div>
                     </div>
@@ -104,7 +108,9 @@ const getRoleBadgeClass = (roleName: string) => {
                                     <th scope="col" class="px-6 py-4">User Details</th>
                                     <th scope="col" class="px-6 py-4">Role</th>
                                     <th scope="col" class="px-6 py-4">Joined Date</th>
-                                    <th scope="col" class="px-6 py-4"><div class="flex justify-center items-center">Action</div></th>
+                                    <th scope="col" class="px-6 py-4">
+                                        <div class="flex justify-center items-center">Action</div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y">
@@ -144,10 +150,14 @@ const getRoleBadgeClass = (roleName: string) => {
                                     <td>
                                         <div class="flex justify-center items-center">
                                             <Link :href="`/management/user/${user.id}/edit`"
+                                                v-if="hasUserRole(user)"
                                                 class="inline-flex items-center justify-center rounded-lg bg-primary p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:ring-ring cursor-pointer"
-                                                title="Edit User">
-                                            <Settings :size="18" stroke-width="2" />
+                                                title="User Settings">
+                                                <Settings :size="18" stroke-width="2" />
                                             </Link>
+                                            <span v-else>
+                                                -
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>

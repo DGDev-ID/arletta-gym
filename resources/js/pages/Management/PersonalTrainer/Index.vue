@@ -7,6 +7,7 @@ import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import Input from "@/components/ui/input/Input.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
+import { Trash2 } from 'lucide-vue-next';
 
 interface User {
     id: number;
@@ -128,7 +129,8 @@ const revokePersonalTrainer = (id: number) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            <tr v-for="personalTrainer in props.personal_trainers.data" :key="personalTrainer.id" class="hover:bg-muted/20 transition-colors">
+                            <tr v-for="personalTrainer in props.personal_trainers.data" :key="personalTrainer.id"
+                                class="hover:bg-muted/20 transition-colors">
                                 <td class="px-6 py-4 font-medium">{{ personalTrainer.name }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ personalTrainer.email }}</td>
                                 <td class="px-6 py-4">
@@ -147,8 +149,9 @@ const revokePersonalTrainer = (id: number) => {
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <button @click="revokePersonalTrainer(personalTrainer.id)"
-                                        class="text-destructive hover:underline font-medium">
+                                    <button @click="revokePersonalTrainer(personalTrainer.id)" type="button"
+                                        class="cursor-pointer text-destructive hover:underline font-medium inline-flex items-center gap-1">
+                                        <Trash2 :size="16" />
                                         Copot Akses
                                     </button>
                                 </td>

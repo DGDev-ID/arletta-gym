@@ -7,6 +7,7 @@ import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import Input from "@/components/ui/input/Input.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
+import { Trash2 } from 'lucide-vue-next';
 
 interface User {
     id: number;
@@ -148,7 +149,8 @@ const revokeAdmin = (id: number) => {
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <button @click="revokeAdmin(admin.id)"
-                                        class="text-destructive hover:underline font-medium">
+                                        class="cursor-pointer text-destructive hover:underline font-medium inline-flex items-center gap-1">
+                                        <Trash2 :size="16" />
                                         Copot Akses
                                     </button>
                                 </td>
