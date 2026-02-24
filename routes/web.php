@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Management\ManageAdminController;
+use App\Http\Controllers\Management\ManageUserController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
 use App\Http\Controllers\Master\MasterPtPackageController;
@@ -28,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('management')->name('management.')->group(function () {
         Route::resource('admin', ManageAdminController::class);
+        Route::resource('user', ManageUserController::class)->only('index');
     });
 });
 

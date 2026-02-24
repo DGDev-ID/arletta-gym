@@ -53,7 +53,7 @@ const managementNavItems: NavItem[] = [
     },
     {
         title: "User",
-        href: "#",
+        href: management.user.index(),
         icon: Users, 
     },
     {
