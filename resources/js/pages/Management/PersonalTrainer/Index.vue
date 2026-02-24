@@ -12,10 +12,10 @@ interface User {
     id: number;
     name: string;
     email: string;
-    gymPts?: any[];
+    gym_pts?: { gym: { id: number; name: string } }[];
 }
 
-defineProps<{
+const props = defineProps<{
     personal_trainers: {
         data: User[];
         links: any[];
@@ -128,7 +128,7 @@ const revokePersonalTrainer = (id: number) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            <tr v-for="personalTrainer in personal_trainers.data" :key="personalTrainer.id" class="hover:bg-muted/20 transition-colors">
+                            <tr v-for="personalTrainer in props.personal_trainers.data" :key="personalTrainer.id" class="hover:bg-muted/20 transition-colors">
                                 <td class="px-6 py-4 font-medium">{{ personalTrainer.name }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ personalTrainer.email }}</td>
                                 <td class="px-6 py-4">
@@ -138,10 +138,10 @@ const revokePersonalTrainer = (id: number) => {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <ul v-if="personalTrainer.gymPts && personalTrainer.gymPts.length > 0">
-                                        <li v-for="gym in personalTrainer.gymPts" :key="gym.id"
+                                    <ul v-if="personalTrainer.gym_pts && personalTrainer.gym_pts.length > 0">
+                                        <li v-for="gym in personalTrainer.gym_pts" :key="gym.gym.id"
                                             class="text-xs text-muted-foreground">
-                                            {{ gym.name }}
+                                            {{ gym.gym.name }}
                                         </li>
                                     </ul>
                                     <span v-else class="text-xs text-muted-foreground">-</span>
@@ -153,7 +153,7 @@ const revokePersonalTrainer = (id: number) => {
                                     </button>
                                 </td>
                             </tr>
-                            <tr v-if="personal_trainers.data.length === 0">
+                            <tr v-if="props.personal_trainers.data.length === 0">
                                 <td colspan="5" class="px-6 py-10 text-center text-muted-foreground italic">
                                     Belum ada user dengan role Personal Trainer.
                                 </td>

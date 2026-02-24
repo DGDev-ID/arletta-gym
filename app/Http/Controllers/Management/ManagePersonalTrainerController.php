@@ -11,8 +11,7 @@ class ManagePersonalTrainerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::role('Personal Trainer')->with('gymPts');
-
+        $query = User::role('Personal Trainer')->with('gymPts.gym');
         return Inertia::render('Management/PersonalTrainer/Index', [
             'personal_trainers' => $query->latest()->paginate(10)->withQueryString(),
         ]);
