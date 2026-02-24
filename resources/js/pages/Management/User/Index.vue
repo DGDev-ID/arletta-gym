@@ -1,16 +1,23 @@
-<script setup>
-import { ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+<script setup lang="ts">
+import { Head, router } from '@inertiajs/vue3';
 import { debounce } from 'lodash';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue'; // Pastikan path sesuai
-import Input from "@/components/ui/input/Input.vue"; // Pastikan path sesuai
 import Pagination from '@/components/Pagination.vue';
+import Input from "@/components/ui/input/Input.vue"; // Pastikan path sesuai
+import AppLayout from '@/layouts/AppLayout.vue';
 
-const props = defineProps({
-    users: Object,
-    filters: Object,
-});
+const props = defineProps<{
+    users: {
+        data: any[];
+        links: any[];
+        total: number;
+    };
+    filters: {
+        search?: string;
+        role?: string;
+    };
+}>();
 
 const breadcrumbItems = [
     { title: 'Management User', href: '/management/users' },
@@ -38,7 +45,7 @@ watch(
     }, 300)
 );
 
-const getRoleBadgeClass = (roleName) => {
+const getRoleBadgeClass = (roleName: string) => {
     switch (roleName) {
         case 'Super Admin': return 'bg-red-100 text-red-800 border-red-200';
         case 'Admin': return 'bg-orange-100 text-orange-800 border-orange-200';

@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { ref, computed } from 'vue';
 import Heading from '@/components/Heading.vue';
-import { type BreadcrumbItem } from '@/types';
-import type { Gym, GymImage } from '@/types';
 
 // Import UI Components
 import Input from "@/components/ui/input/Input.vue"
 import MultipleSelect from "@/components/ui/multiple-select/MultipleSelect.vue"
 import Textarea from "@/components/ui/textarea/Textarea.vue"
+import AppLayout from '@/layouts/AppLayout.vue';
+import type { Gym, GymImage } from '@/types';
+import { type BreadcrumbItem } from '@/types';
 
 const props = defineProps<{
     gym: Gym;

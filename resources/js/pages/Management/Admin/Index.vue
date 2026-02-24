@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
-import Heading from '@/components/Heading.vue';
-import Input from "@/components/ui/input/Input.vue";
-import { debounce } from 'lodash'; // Pastikan lodash terinstall atau gunakan timeout manual
 import axios from 'axios';
+import { debounce } from 'lodash'; // Pastikan lodash terinstall atau gunakan timeout manual
+import { ref, watch } from 'vue';
+import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
+import Input from "@/components/ui/input/Input.vue";
+import AppLayout from '@/layouts/AppLayout.vue';
 
 interface User {
     id: number;
@@ -15,10 +15,10 @@ interface User {
     gyms?: any[];
 }
 
-const props = defineProps<{
+defineProps<{
     admins: {
         data: User[];
-        links: any[]; // Ini yang akan dikirim ke komponen Pagination
+        links: any[];
         total: number;
     };
 }>();
