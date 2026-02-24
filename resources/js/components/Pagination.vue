@@ -7,7 +7,7 @@ defineProps({
 </script>
 
 <template>
-    <div v-if="links.length > 3" class="flex justify-center mt-6">
+    <div v-if="links.length > 3" class="flex justify-end">
         <nav class="inline-flex rounded-md shadow-sm -space-x-px">
             <template v-for="(link, key) in links" :key="key">
                 

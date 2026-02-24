@@ -5,6 +5,7 @@ import { debounce } from 'lodash';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue'; // Pastikan path sesuai
 import Input from "@/components/ui/input/Input.vue"; // Pastikan path sesuai
+import Pagination from '@/components/Pagination.vue';
 
 const props = defineProps({
     users: Object,
@@ -141,37 +142,8 @@ const getRoleBadgeClass = (roleName) => {
                         </table>
                     </div>
 
-                    <div v-if="users.links.length > 3"
-                        class="bg-background px-4 py-3 border-t flex items-center justify-between sm:px-6">
-                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div>
-                                <p class="text-sm text-muted-foreground">
-                                    Showing
-                                    <span class="font-medium text-foreground">{{ users.from }}</span>
-                                    to
-                                    <span class="font-medium text-foreground">{{ users.to }}</span>
-                                    of
-                                    <span class="font-medium text-foreground">{{ users.total }}</span>
-                                    results
-                                </p>
-                            </div>
-                            <div>
-                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                                    aria-label="Pagination">
-                                    <template v-for="(link, key) in users.links" :key="key">
-                                        <div v-if="link.url === null"
-                                            class="relative inline-flex items-center px-4 py-2 border border-input bg-background text-sm font-medium text-muted-foreground cursor-default"
-                                            v-html="link.label" />
-                                        <Link v-else :href="link.url"
-                                            class="relative inline-flex items-center px-4 py-2 border border-input text-sm font-medium transition-colors hover:bg-muted/50"
-                                            :class="{
-                                                'z-10 bg-primary/10 border-primary text-primary': link.active,
-                                                'bg-background text-foreground': !link.active
-                                            }" v-html="link.label" />
-                                    </template>
-                                </nav>
-                            </div>
-                        </div>
+                    <div class="p-4 bg-background">
+                        <Pagination :links="users.links" />
                     </div>
                 </div>
 

@@ -47,14 +47,14 @@ const masterDataNavItems: NavItem[] = [
 
 const managementNavItems: NavItem[] = [
     {
-        title: "Admin",
-        href: management.admin.index(),
-        icon: ShieldCheck,
-    },
-    {
         title: "User",
         href: management.user.index(),
         icon: Users, 
+    },
+    {
+        title: "Admin",
+        href: management.admin.index(),
+        icon: ShieldCheck,
     },
     {
         title: "Personal Trainer",

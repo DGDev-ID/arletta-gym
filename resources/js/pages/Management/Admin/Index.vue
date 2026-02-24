@@ -6,6 +6,7 @@ import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
 import { debounce } from 'lodash'; // Pastikan lodash terinstall atau gunakan timeout manual
 import axios from 'axios';
+import Pagination from '@/components/Pagination.vue';
 
 interface User {
     id: number;
@@ -15,7 +16,11 @@ interface User {
 }
 
 const props = defineProps<{
-    admins: User[];
+    admins: {
+        data: User[];
+        links: any[]; // Ini yang akan dikirim ke komponen Pagination
+        total: number;
+    };
 }>();
 
 const breadcrumbItems = [
@@ -123,7 +128,7 @@ const revokeAdmin = (id: number) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            <tr v-for="admin in admins" :key="admin.id" class="hover:bg-muted/20 transition-colors">
+                            <tr v-for="admin in admins.data" :key="admin.id" class="hover:bg-muted/20 transition-colors">
                                 <td class="px-6 py-4 font-medium">{{ admin.name }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ admin.email }}</td>
                                 <td class="px-6 py-4">
@@ -148,13 +153,17 @@ const revokeAdmin = (id: number) => {
                                     </button>
                                 </td>
                             </tr>
-                            <tr v-if="admins.length === 0">
+                            <tr v-if="admins.data.length === 0">
                                 <td colspan="4" class="px-6 py-10 text-center text-muted-foreground italic">
                                     Belum ada user dengan role admin.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <div class="p-4 border-t bg-background">
+                        <Pagination :links="admins.links" />
+                    </div>
                 </div>
 
             </div>

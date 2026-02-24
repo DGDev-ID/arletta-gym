@@ -9,22 +9,15 @@ use Inertia\Inertia;
 
 class ManageAdminController extends Controller
 {
-    /**
-     * Index: Mendapatkan data semua User dengan role Admin
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $admins = User::role('Admin')->with('gyms')->latest()->get();
-        // return $admins;
+        $query = User::role('Admin')->with('gyms');
+
         return Inertia::render('Management/Admin/Index', [
-            'admins' => $admins
+            'admins' => $query->latest()->paginate(10)->withQueryString(),
         ]);
     }
 
-    /**
-     * Show: Digunakan untuk pencarian (Search API) via Inertia/Axios
-     * Mendapatkan data user yang BUKAN admin berdasarkan email LIKE
-     */
     public function show(Request $request)
     {
         $search = $request->query('email');
@@ -41,9 +34,6 @@ class ManageAdminController extends Controller
         return response()->json($users);
     }
 
-    /**
-     * Store: Memberikan role admin ke user.id
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -56,9 +46,6 @@ class ManageAdminController extends Controller
         return redirect()->back()->with('success', "{$user->name} berhasil dijadikan Admin.");
     }
 
-    /**
-     * Destroy: Melepas role admin dari user
-     */
     public function destroy(User $admin)
     {
         $admin->removeRole('Admin');
