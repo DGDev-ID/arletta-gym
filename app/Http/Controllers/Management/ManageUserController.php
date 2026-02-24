@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Management;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class ManageUserController extends Controller
@@ -39,5 +41,46 @@ class ManageUserController extends Controller
                 'role'   => $request->role ?? '',
             ],
         ]);
+    }
+
+    public function create()
+    {
+        return Inertia::render('Management/User/Create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string',
+            'nik' => 'nullable|string',
+            'birth_place' => 'nullable|string|max:255',
+            'birth_date' => 'nullable|date',
+            'gender' => 'nullable|in:male,female',
+            'address' => 'nullable|string',
+            'phone_number' => 'nullable|string|max:20',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            $user->assignRole('User');
+
+            $user->userDetail()->create([
+                'nik' => $validated['nik'],
+                'birth_place' => $validated['birth_place'],
+                'birth_date' => $validated['birth_date'],
+                'gender' => $validated['gender'],
+                'address' => $validated['address'],
+                'phone_number' => $validated['phone_number'],
+            ]);
+        });
+
+        return redirect()->route('management.user.index')->with('success', 'User created successfully.');
     }
 }

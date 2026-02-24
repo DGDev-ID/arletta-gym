@@ -33,7 +33,7 @@ const formatLabel = (label: string) => {
           :href="link.url"
           class="px-3 py-2 text-sm border border-gray-300"
           :class="{
-            'z-10 bg-indigo-600 border-indigo-600 text-white': link.active,
+            'z-10 bg-primary border-primary text-white': link.active,
             'bg-white text-gray-700 hover:bg-gray-100': !link.active
           }"
         >

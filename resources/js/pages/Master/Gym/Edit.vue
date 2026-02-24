@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 
@@ -164,11 +164,8 @@ const submit = () => {
                         </div>
 
                         <div class="flex items-center justify-end gap-4 border-t pt-6">
-                            <Link href="/master/gym" class="text-sm text-muted-foreground hover:underline">
-                                Batal
-                            </Link>
                             <button type="submit" :disabled="form.processing"
-                                class="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
+                                class="cursor-pointer rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
                                 Simpan Perubahan
                             </button>
                         </div>

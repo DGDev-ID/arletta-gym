@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -138,11 +138,8 @@ const submit = () => {
                         </div>
 
                         <div class="flex justify-end items-center gap-4 pt-6 border-t">
-                            <Link href="/master/membership" class="text-sm text-muted-foreground hover:underline">
-                                Batal
-                            </Link>
                             <button type="submit" :disabled="form.processing"
-                                class="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 transition">
+                                class="cursor-pointer rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 transition">
                                 Update Membership
                             </button>
                         </div>

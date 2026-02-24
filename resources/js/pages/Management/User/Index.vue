@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { debounce } from 'lodash';
+import { Settings } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue'; // Pastikan path sesuai
 import Pagination from '@/components/Pagination.vue';
@@ -34,7 +35,7 @@ watch(() => props.filters, (newFilters) => {
 watch(
     [search, role],
     debounce(([newSearch, newRole]) => {
-        router.get('/management/user', { 
+        router.get('/management/user', {
             search: newSearch,
             role: newRole
         }, {
@@ -64,8 +65,17 @@ const getRoleBadgeClass = (roleName: string) => {
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex flex-col justify-between gap-4">
-                    <Heading title="Manage Users"
-                        :description="`Kelola data pengguna terdaftar. Total Users: ${users.total}`" />
+                    <div class="flex flex-row justify-between item-center">
+                        <Heading title="Manage Users"
+                            :description="`Kelola data pengguna terdaftar. Total Users: ${users.total}`" />
+
+                        <div>
+                            <Link href="/management/user/create"
+                                class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+                            Tambah User
+                            </Link>
+                        </div>
+                    </div>
 
                     <div class="flex flex-col sm:flex-row gap-4 w-full md:flex-1 justify-between">
                         <div class="w-full sm:w-48">
@@ -94,6 +104,7 @@ const getRoleBadgeClass = (roleName: string) => {
                                     <th scope="col" class="px-6 py-4">User Details</th>
                                     <th scope="col" class="px-6 py-4">Role</th>
                                     <th scope="col" class="px-6 py-4">Joined Date</th>
+                                    <th scope="col" class="px-6 py-4"><div class="flex justify-center items-center">Action</div></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y">
@@ -128,6 +139,16 @@ const getRoleBadgeClass = (roleName: string) => {
 
                                     <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">
                                         {{ new Date(user.created_at).toLocaleDateString() }}
+                                    </td>
+
+                                    <td>
+                                        <div class="flex justify-center items-center">
+                                            <Link :href="`/management/user/${user.id}/edit`"
+                                                class="inline-flex items-center justify-center rounded-lg bg-primary p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:ring-ring cursor-pointer"
+                                                title="Edit User">
+                                            <Settings :size="18" stroke-width="2" />
+                                            </Link>
+                                        </div>
                                     </td>
                                 </tr>
 
