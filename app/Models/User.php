@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'unique_id'
     ];
 
     /**
@@ -36,6 +37,15 @@ class User extends Authenticatable
         'two_factor_recovery_codes',
         'remember_token',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->unique_id)) {
+                $user->unique_id = self::generateUniqueUuid();
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -51,8 +61,17 @@ class User extends Authenticatable
         ];
     }
 
+    private static function generateUniqueUuid()
+    {
+        do {
+            $uuid = (string) \Illuminate\Support\Str::uuid();
+        } while (static::where('unique_id', $uuid)->exists());
+
+        return $uuid;
+    }
+
     // Relations
-    public function userDetail() 
+    public function userDetail()
     {
         return $this->hasOne(UserDetail::class);
     }

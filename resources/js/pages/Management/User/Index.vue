@@ -149,7 +149,7 @@ const getRoleBadgeClass = (roleName: string) => {
 
                                     <td>
                                         <div class="flex justify-center items-center">
-                                            <Link :href="`/management/user/${user.id}/edit`"
+                                            <Link :href="`/management/user/${user.id}`"
                                                 v-if="hasUserRole(user)"
                                                 class="inline-flex items-center justify-center rounded-lg bg-primary p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:ring-ring cursor-pointer"
                                                 title="User Settings">

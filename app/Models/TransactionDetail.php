@@ -10,7 +10,6 @@ class TransactionDetail extends Model
         'transaction_id',
         'status',
         'description',
-        'snap_token',
         'confirmed_by'
     ];
 

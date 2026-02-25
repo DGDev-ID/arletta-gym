@@ -34,7 +34,7 @@ class MasterMembershipController extends Controller
             'price' => 'required|numeric|min:0',
             // Validasi array promo
             'promos' => 'nullable|array',
-            'promos.*.unique_code' => 'required|unique:membership_promos,unique_code',
+            'promos.*.unique_code' => 'nullable|unique:membership_promos,unique_code',
             'promos.*.type' => 'required|in:discount_percent,discount_amount,bonus_days',
             'promos.*.value' => 'required|numeric|min:0',
         ]);
@@ -72,7 +72,7 @@ class MasterMembershipController extends Controller
             'duration_in_days' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
             'promos' => 'nullable|array',
-            'promos.*.unique_code' => 'required|string', // Validasi unique manual/custom jika perlu
+            'promos.*.unique_code' => 'nullable|unique:membership_promos,unique_code',
             'promos.*.type' => 'required|in:discount_percent,discount_amount,bonus_days',
             'promos.*.value' => 'required|numeric|min:0',
         ]);

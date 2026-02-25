@@ -17,7 +17,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2)->nullable();
             $table->decimal('ppn_fee', 10, 2)->nullable();
-            $table->decimal('total_price', 10, 2)->nullable();
             $table->enum('status', ['paid', 'unpaid'])->default('unpaid');
             $table->dateTime('must_paid_before')->nullable();
             $table->timestamps();

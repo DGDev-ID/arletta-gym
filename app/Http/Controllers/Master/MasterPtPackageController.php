@@ -35,7 +35,7 @@ class MasterPtPackageController extends Controller
             'max_person' => 'required|integer|min:1',
             // Validasi array promo
             'promos' => 'nullable|array',
-            'promos.*.unique_code' => 'required|unique:pt_package_promos,unique_code',
+            'promos.*.unique_code' => 'nullable|unique:pt_package_promos,unique_code',
             'promos.*.type' => 'required|in:discount_percent,discount_amount,bonus_sessions',
             'promos.*.value' => 'required|numeric|min:0',
         ]);
@@ -75,7 +75,7 @@ class MasterPtPackageController extends Controller
             'price' => 'required|numeric|min:0',
             'max_person' => 'required|integer|min:1',
             'promos' => 'nullable|array',
-            'promos.*.unique_code' => 'required|string', // Validasi unique manual/custom jika perlu
+            'promos.*.unique_code' => 'nullable|unique:pt_package_promos,unique_code',
             'promos.*.type' => 'required|in:discount_percent,discount_amount,bonus_days',
             'promos.*.value' => 'required|numeric|min:0',
         ]);

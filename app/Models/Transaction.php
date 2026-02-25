@@ -20,8 +20,29 @@ class Transaction extends Model
         'ppn_fee',
         'total_price',
         'status',
-        'description'
+        'description',
+        'sessions_or_days',
+        'snap_token'
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->unique_id)) {
+                $user->unique_id = self::generateUniqueUuid();
+        }
+        });
+    }
+
+    private static function generateUniqueUuid()
+    {
+        do {
+            $uuid = (string) \Illuminate\Support\Str::uuid();
+        } while (static::where('unique_id', $uuid)->exists());
+
+        return $uuid;
+    }
+
 
     // Relations
     public function user()

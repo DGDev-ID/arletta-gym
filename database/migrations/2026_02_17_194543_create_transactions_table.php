@@ -27,6 +27,8 @@ return new class extends Migration
             $table->decimal('total_price', 10, 2);
             $table->enum('status', ['pending', 'success', 'failed']);
             $table->text('description')->nullable();
+            $table->integer('sessions_or_days')->nullable();
+            $table->string('snap_token')->nullable();
             $table->timestamps();
         });
     }

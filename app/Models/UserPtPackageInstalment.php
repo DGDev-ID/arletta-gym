@@ -11,7 +11,6 @@ class UserPtPackageInstalment extends Model
         'description',
         'price',
         'ppn_fee',
-        'total_price',
         'status',
         'must_paid_before'
     ];

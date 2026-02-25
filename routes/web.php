@@ -31,7 +31,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('management')->name('management.')->group(function () {
         Route::resource('admin', ManageAdminController::class);
+
         Route::resource('user', ManageUserController::class);
+        Route::get('user/gym-details/{gym}', [ManageUserController::class, 'getGymDetails']);
+        Route::post('user/check-promo', [ManageUserController::class, 'checkPromoCode']);
+        Route::post('user/generate-payment', [ManageUserController::class, 'generatePayment'])->name('user.generate-payment');
+        
         Route::resource('personal-trainer', ManagePersonalTrainerController::class);
     });
 });

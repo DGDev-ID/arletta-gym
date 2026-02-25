@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['pending', 'success', 'failed']);
             $table->text('description')->nullable();
-            $table->string('snap_token')->nullable();
             $table->foreignId('confirmed_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
