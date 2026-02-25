@@ -27,20 +27,29 @@ export function useCurrentUrl(): UseCurrentUrlReturn {
         urlToCheck: NonNullable<InertiaLinkProps['href']>,
         currentUrl?: string,
     ) {
-        const urlToCompare = currentUrl ?? currentUrlReactive.value;
-        const urlString = toUrl(urlToCheck);
+        const urlToCompare = (currentUrl ?? currentUrlReactive.value).replace(/\/$/, "") || "/";
+        
+        let urlString = toUrl(urlToCheck);
+        let targetPath = "";
 
         if (!urlString.startsWith('http')) {
-            return urlString === urlToCompare;
+            targetPath = urlString.replace(/\/$/, "") || "/";
+        } else {
+            try {
+                targetPath = new URL(urlString).pathname.replace(/\/$/, "") || "/";
+            } catch {
+                return false;
+            }
         }
 
-        try {
-            const absoluteUrl = new URL(urlString);
-
-            return absoluteUrl.pathname === urlToCompare;
-        } catch {
-            return false;
+        if (targetPath === '/') {
+            return urlToCompare === '/';
         }
+
+        return (
+            urlToCompare === targetPath || 
+            urlToCompare.startsWith(targetPath + '/')
+        );
     }
 
     function whenCurrentUrl(
