@@ -4,7 +4,7 @@ import axios from 'axios';
 import {
     Save, Lock, User as UserIcon, MapPin,
     Phone, Calendar, Loader2,
-    Download
+    Download, CreditCard, Ticket, Dumbbell, Store, CheckCircle, XCircle, Clock, History
 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import Heading from '@/components/Heading.vue';
@@ -13,7 +13,14 @@ import Textarea from "@/components/ui/textarea/Textarea.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
 import QrcodeVue from 'qrcode.vue'
 import { computed, watch } from 'vue';
-import { CreditCard, Ticket, Dumbbell, Store } from 'lucide-vue-next';
+import { router } from '@inertiajs/vue3';
+import { Notyf } from 'notyf';
+import 'notyf/notyf.min.css';
+
+const notyf = new Notyf({
+    duration: 3000,
+    position: { x: 'right', y: 'bottom' },
+});
 
 declare global {
     interface Window {
@@ -29,7 +36,8 @@ interface Gym {
 
 const props = defineProps<{
     user: any,
-    gyms: Gym[]
+    gyms: Gym[],
+    pendingTransactions: any[]
 }>();
 
 interface Membership {
@@ -82,6 +90,12 @@ watch(() => paymentForm.value.gym_id, async (newGymId) => {
     }
 });
 
+const approveTransaction = (id: number | string) => {
+    if (confirm('Apakah Anda yakin ingin menyetujui pembayaran manual ini?')) {
+        router.post(`/management/user/transactions/${id}/approve`);
+    }
+};
+
 const selectedItem = computed(() => {
     if (paymentForm.value.transaction_type === 'membership') {
         return gymData.value.memberships.find(m => m.id === paymentForm.value.selected_item_id);
@@ -97,6 +111,20 @@ const formatRupiah = (value: any) => {
         maximumFractionDigits: 0,
     }).format(value)
 }
+
+const handleManualPayment = (id: number | string, action: 'approve' | 'reject') => {
+    const label = action === 'approve' ? 'MENYETUJUI' : 'MENOLAK';
+
+    if (confirm(`Apakah Anda yakin ingin ${label} pembayaran manual ini?`)) {
+        router.post(`/management/user/transactions/${id}/manual-action`, {
+            action: action
+        }, {
+            onSuccess: () => {
+                notyf.success(`Pembayaran manual berhasil ${action === 'approve' ? 'disetujui' : 'ditolak'}!`);
+            }
+        });
+    }
+};
 
 const handleGeneratePayment = async () => {
     if (!paymentForm.value.selected_item_id) {
@@ -143,8 +171,14 @@ const handleGeneratePayment = async () => {
                 }
             });
         } else {
-            // Jika pembayaran manual atau tidak butuh Snap (misal: bayar di kasir)
-            alert("Pembayaran manual berhasil dibuat! Silakan cek rincian transaksi.");
+            notyf.success("Pembayaran manual berhasil dibuat!");
+
+            router.reload({ 
+                only: ['pendingTransactions'],
+                onSuccess: () => {
+                    paymentForm.value.selected_item_id = '';
+                }
+            });
         }
 
     } catch (error: any) {
@@ -690,6 +724,66 @@ const downloadSVG = () => {
                                 <Loader2 v-if="isGenerating" :size="18" class="animate-spin" />
                                 <span>{{ isGenerating ? 'MEMPROSES...' : 'GENERATE PEMBAYARAN' }}</span>
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6 mt-8">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <Clock class="text-orange-500" :size="20" />
+                            <h3 class="font-bold text-lg">Transaksi Pending (Manual)</h3>
+                        </div>
+                        <span class="bg-orange-100 text-orange-700 text-xs px-3 py-1 rounded-full font-bold">
+                            {{ pendingTransactions.length }} Perlu Validasi
+                        </span>
+                    </div>
+                    <hr class="border-muted" />
+
+                    <div v-if="pendingTransactions.length === 0" class="text-center py-8 text-muted-foreground">
+                        <History :size="40" class="mx-auto mb-2 opacity-20" />
+                        <p>Tidak ada transaksi manual yang menunggu persetujuan.</p>
+                    </div>
+
+                    <div v-else class="grid grid-cols-1 gap-4">
+                        <div v-for="trx in pendingTransactions" :key="trx.id"
+                            class="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-xl bg-orange-50/30 border-orange-100">
+
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-xs font-bold text-orange-600">#{{ trx.unique_id
+                                    }}</span>
+                                    <span class="text-[10px] bg-white border px-2 py-0.5 rounded font-bold uppercase">{{
+                                        trx.transaction_type }}</span>
+                                </div>
+                                <p class="font-bold text-sm">
+                                    {{ trx.membership?.name || trx.full_pt?.name || trx.installment_pt?.name || 'Paket tidak diketahui' }}
+                                </p>
+                                <p class="text-xs text-muted-foreground italic">{{ trx.description }}</p>
+                            </div>
+
+                            <div
+                                class="flex items-center gap-6 mt-4 md:mt-0 w-full md:w-auto justify-between md:justify-end">
+                                <div class="text-right">
+                                    <p class="text-[10px] uppercase font-bold text-muted-foreground leading-none">Total
+                                        Tagihan</p>
+                                    <p class="font-black text-primary">{{ formatRupiah(trx.total_price) }}</p>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <button @click="handleManualPayment(trx.id, 'approve')"
+                                        class="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm cursor-pointer"
+                                        title="Setujui Pembayaran">
+                                        <CheckCircle :size="18" />
+                                    </button>
+
+                                    <button @click="handleManualPayment(trx.id, 'reject')"
+                                        class="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                                        title="Tolak Pembayaran">
+                                        <XCircle :size="18" />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

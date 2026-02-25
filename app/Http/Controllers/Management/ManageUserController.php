@@ -7,8 +7,10 @@ use App\Http\Services\PaymentService;
 use App\Models\MasterGym;
 use App\Models\MembershipPromo;
 use App\Models\PtPackagePromo;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -120,10 +122,55 @@ class ManageUserController extends Controller
 
         $gyms = MasterGym::all();
 
+        $pendingTransactions = Transaction::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('method', 'manual')
+            ->with(['membership', 'fullPt', 'installmentPt']) // Eager load relasi paketnya
+            ->latest()
+            ->get();
+
         return Inertia::render('Management/User/Show', [
             'user' => $user,
-            'gyms' => $gyms
+            'gyms' => $gyms,
+            'pendingTransactions' => $pendingTransactions,
         ]);
+    }
+
+    public function approveOrRejectManualPayment(Request $request, Transaction $transaction)
+    {
+        $request->validate([
+            'action' => 'required|in:approve,reject'
+        ]);
+
+        try {
+            DB::transaction(function () use ($transaction, $request) {
+                if ($request->action === 'approve') {
+                    $transaction->update([
+                        'status' => 'success',
+                    ]);
+                    $transaction->transactionDetails()->create([
+                        'status' => 'success',
+                        'description' => 'Pembayaran manual disetujui oleh admin.',
+                        'confirmed_by' => Auth::user()->id,
+                    ]);
+                    $message = 'Pembayaran manual berhasil disetujui.';
+                } else {
+                    $transaction->update([
+                        'status' => 'failed',
+                    ]);
+                    $transaction->transactionDetails()->create([
+                        'status' => 'failed',
+                        'description' => 'Pembayaran manual ditolak oleh admin.',
+                        'confirmed_by' => Auth::user()->id,
+                    ]);
+                    $message = 'Pembayaran manual telah ditolak.';
+                }
+            });
+
+            return back()->with('success', $message ?? 'Berhasil memperbarui status transaksi.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal memproses transaksi.');
+        }
     }
 
     public function getGymDetails(MasterGym $gym)
