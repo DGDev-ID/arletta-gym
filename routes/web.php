@@ -6,6 +6,7 @@ use App\Http\Controllers\Management\ManageUserController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
 use App\Http\Controllers\Master\MasterPtPackageController;
+use App\Http\Controllers\Transaction\HistoryTransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -40,6 +41,10 @@ Route::middleware(['auth'])->group(function () {
             ->name('management.user.transactions.manual-action');
 
         Route::resource('personal-trainer', ManagePersonalTrainerController::class);
+    });
+
+    Route::prefix('transaction')->name('transaction.')->group(function() {
+        Route::resource('history', HistoryTransactionController::class);
     });
 });
 

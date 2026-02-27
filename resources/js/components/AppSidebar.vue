@@ -17,6 +17,7 @@ import management from '@/routes/management';
 import master from '@/routes/master';
 import { type NavItem } from '@/types';
 import AppLogo from './AppLogo.vue';
+import transaction from '@/routes/transaction';
 
 const mainNavItems: NavItem[] = [
     {
@@ -65,7 +66,7 @@ const managementNavItems: NavItem[] = [
 const transactionNavItems: NavItem[] = [
     {
         title: "History Transaction",
-        href: "#",
+        href: transaction.history.index(),
         icon: History, 
     },
 ];
