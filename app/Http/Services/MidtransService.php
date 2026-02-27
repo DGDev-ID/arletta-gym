@@ -23,7 +23,7 @@ class MidtransService
         if ($transaction->method_midtrans_detail === 'va') {
             $enabledPayments = ['bank_transfer']; // Menampilkan semua Virtual Account yang aktif
         } elseif ($transaction->method_midtrans_detail === 'qris') {
-            $enabledPayments = ['qris', 'gopay']; // Mengunci hanya ke QRIS
+            $enabledPayments = ['qris']; // Mengunci hanya ke QRIS
         }
 
         $params = [
