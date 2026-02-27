@@ -29,6 +29,7 @@ const formattedTransactions = computed(() => {
         }));
 });
 import { router } from '@inertiajs/vue3';
+import { formatRupiah } from '@/helpers/formatRupiah';
 function setStatus(status: 'success' | 'failed') {
     if (!selectedTransaction.value) return;
     router.patch(`/transaction/history/${selectedTransaction.value.id}`, {
@@ -78,7 +79,7 @@ function closeModal() {
                             <tr v-for="trx in formattedTransactions" :key="trx.id" class="border-t hover:bg-muted/40 transition">
                                 <td class="px-6 py-4">{{ trx.no }}</td>
                                 <td class="px-6 py-4 font-medium">{{ trx.member }}</td>
-                                <td class="px-6 py-4 font-semibold">Rp {{ trx.amount.toLocaleString('id-ID') }}</td>
+                                <td class="px-6 py-4 font-semibold"> {{ formatRupiah(trx.amount) }}</td>
                                 <td class="px-6 py-4">{{ trx.date }}</td>
                                 <td class="px-6 py-4">
                                     <span v-if="trx.status === 'success'" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-800">

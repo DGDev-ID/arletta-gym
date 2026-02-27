@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatRupiah } from '@/helpers/formatRupiah';
 
 const props = defineProps<{ transaction: any }>();
 
@@ -40,10 +41,10 @@ const trx = computed(() => props.transaction);
                         </div>
                         <div class="space-y-3">
                             <div><span class="text-muted-foreground text-xs">Metode</span><div class="font-medium">{{ trx.method || 'manual' }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Harga</span><div class="font-semibold text-lg">Rp {{ (trx.price || 0).toLocaleString('id-ID') }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Biaya Midtrans</span><div class="font-semibold text-lg">Rp {{ (trx.midtrans_fee || 0).toLocaleString('id-ID') }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Biaya PPN</span><div class="font-semibold text-lg">Rp {{ (trx.ppn_fee || 0).toLocaleString('id-ID') }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Total Biaya</span><div class="font-semibold text-lg">Rp {{ (trx.total_price || 0).toLocaleString('id-ID') }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Harga</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.price) || 0) }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Biaya Midtrans</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.midtrans_fee) || 0) }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Biaya PPN</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.ppn_fee) || 0) }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Total Biaya</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.total_price) || 0) }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Sesi / Hari</span><div class="font-medium">{{ trx.sessions_or_days || '-' }}</div></div>
                         </div>
                     </div>

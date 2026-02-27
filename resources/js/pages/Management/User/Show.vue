@@ -16,6 +16,7 @@ import { computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Notyf } from 'notyf';
 import 'notyf/notyf.min.css';
+import { formatRupiah } from '@/helpers/formatRupiah';
 
 const notyf = new Notyf({
     duration: 3000,
@@ -102,15 +103,6 @@ const selectedItem = computed(() => {
     }
     return gymData.value.pt_packages.find(p => p.id === paymentForm.value.selected_item_id);
 });
-
-const formatRupiah = (value: any) => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value)
-}
 
 const handleManualPayment = (id: number | string, action: 'approve' | 'reject') => {
     const label = action === 'approve' ? 'MENYETUJUI' : 'MENOLAK';
