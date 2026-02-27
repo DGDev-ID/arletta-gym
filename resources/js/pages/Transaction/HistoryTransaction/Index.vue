@@ -16,8 +16,8 @@ import { ref } from 'vue';
 const formattedTransactions = computed(() => {
     // Laravel pagination: data ada di props.transactions.data
     return props.transactions.data
-        .filter(trx => trx.status === 'success')
-        .map((trx, idx) => ({
+        .filter((trx: { status: string; }) => trx.status === 'success')
+        .map((trx: { unique_id: any; id: any; user: { name: any; }; total_price: any; price: any; created_at: string | number | Date; status: any; method_midtrans_detail: any; }, idx: number) => ({
             no: (props.transactions.current_page - 1) * props.transactions.per_page + idx + 1,
             id: trx.unique_id || trx.id,
             member: trx.user?.name || '-',
