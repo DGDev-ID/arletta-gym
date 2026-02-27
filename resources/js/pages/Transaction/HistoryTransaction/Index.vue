@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Pagination from '@/components/Pagination.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
@@ -104,19 +105,9 @@ function closeModal() {
                         </tbody>
                     </table>
                                 <!-- Pagination -->
-                                <div class="flex justify-end mt-4 mb-6">
-                                    <nav v-if="props.transactions.links && props.transactions.links.length > 1" class="inline-flex rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                                        <template v-for="link in props.transactions.links">
-                                            <button
-                                                v-if="link.url"
-                                                :key="link.label"
-                                                @click="router.visit(link.url)"
-                                                :class="['px-3 py-2 text-sm font-medium', link.active ? 'bg-primary text-white' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800', 'rounded-lg']"
-                                            >{{ link.label.replace(/&laquo;/g, '«').replace(/&raquo;/g, '»') }}</button>
-                                            <span v-else :key="link.label" class="px-3 py-2 text-sm text-zinc-400">{{ link.label.replace(/&laquo;/g, '«').replace(/&raquo;/g, '»') }}</span>
-                                        </template>
-                                    </nav>
-                                </div>
+                <div class="mt-4 mb-6">
+                    <Pagination :links="props.transactions.links" />
+                </div>
                     <!-- Modal Detail Transaksi dihapus, sekarang pindah route ke detail -->
                     </div>
             </div>
