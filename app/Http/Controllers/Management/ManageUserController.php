@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\PaymentService;
+use App\Http\Services\UpdateStatusTransactionService;
 use App\Models\MasterGym;
 use App\Models\MembershipPromo;
 use App\Models\PtPackagePromo;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserPtPackage;
+use App\Models\UserPtPackageInstalment;
+use App\Models\UserPtPackageMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -129,10 +133,15 @@ class ManageUserController extends Controller
             ->latest()
             ->get();
 
+        $userPtPackageIds = UserPtPackageMember::where('user_id', $user->id)->pluck('user_pt_package_id');
+        $listInstalments = UserPtPackage::whereIn('id', $userPtPackageIds)->where('status', 'instalment')->pluck('id');
+        $pendingInstalments = UserPtPackageInstalment::whereIn('user_pt_package_id', $listInstalments)->where('status', 'unpaid')->get();
+
         return Inertia::render('Management/User/Show', [
             'user' => $user,
             'gyms' => $gyms,
             'pendingTransactions' => $pendingTransactions,
+            'pendingInstallments' => $pendingInstalments
         ]);
     }
 
@@ -145,31 +154,15 @@ class ManageUserController extends Controller
         try {
             DB::transaction(function () use ($transaction, $request) {
                 if ($request->action === 'approve') {
-                    $transaction->update([
-                        'status' => 'success',
-                    ]);
-                    $transaction->transactionDetails()->create([
-                        'status' => 'success',
-                        'description' => 'Pembayaran manual disetujui oleh admin.',
-                        'confirmed_by' => Auth::user()->id,
-                    ]);
-                    $message = 'Pembayaran manual berhasil disetujui.';
+                    UpdateStatusTransactionService::makeSuccess($transaction, Auth::id());
                 } else {
-                    $transaction->update([
-                        'status' => 'failed',
-                    ]);
-                    $transaction->transactionDetails()->create([
-                        'status' => 'failed',
-                        'description' => 'Pembayaran manual ditolak oleh admin.',
-                        'confirmed_by' => Auth::user()->id,
-                    ]);
-                    $message = 'Pembayaran manual telah ditolak.';
+                    UpdateStatusTransactionService::makeFailed($transaction, Auth::id());
                 }
             });
 
             return back()->with('success', $message ?? 'Berhasil memperbarui status transaksi.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal memproses transaksi.');
+            return back()->with('error', 'Gagal memproses transaksi.' . $e->getMessage());
         }
     }
 
@@ -254,12 +247,48 @@ class ManageUserController extends Controller
         return redirect()->route('management.user.index')->with('success', 'User updated successfully.');
     }
 
-    public function generatePayment(Request $request)
+    public function generateInstallment(Request $request)
     {
-        // Gunakan $request->all() agar menjadi array
         $validator = Validator::make($request->all(), [
             'user_id' => ['required', 'exists:users,id', function ($attribute, $value, $fail) {
-                // Cek role User
+                if (!User::role('User')->where('id', $value)->exists()) {
+                    $fail('User tidak ditemukan atau tidak memiliki akses sebagai member.');
+                }
+            }],
+            'user_pt_package_installment_id' =>  ['required', 'exists:user_pt_package_instalments,id'],
+            'payment_method' => ['required', 'in:manual,va,qris']
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $validated = $validator->validated();
+
+        $userPtPackageInstallment = UserPtPackageInstalment::findOrFail($validated['user_pt_package_installment_id']);
+
+        $res = PaymentService::processInstallment($userPtPackageInstallment, $validated['payment_method'], $validated['user_id']);
+
+        if (in_array($validated['payment_method'], ['va', 'qris'])) {
+            $user = User::find($validated['user_id']);
+
+            $transaction = \App\Models\Transaction::find($res['transaction_id']);
+
+            $midtransService = new \App\Http\Services\MidtransService();
+            $snapToken = $midtransService->getSnapToken($transaction, $user);
+            $transaction->snap_token = $snapToken;
+            $transaction->save();
+
+            $res['snap_token'] = $snapToken;
+        }
+
+        return response()->json($res);
+    }
+
+    public function generatePayment(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => ['required', 'exists:users,id', function ($attribute, $value, $fail) {
                 if (!User::role('User')->where('id', $value)->exists()) {
                     $fail('User tidak ditemukan atau tidak memiliki akses sebagai member.');
                 }
@@ -280,6 +309,7 @@ class ManageUserController extends Controller
                 'min:0',
                 'max:100'
             ],
+            'installment_pt_id' => ['nullable', 'exists:user_pt_package_instalments,id'],
             'promo_code' => 'nullable|string',
         ]);
 
@@ -291,11 +321,8 @@ class ManageUserController extends Controller
         $res = PaymentService::processPayment($validated);
 
         if (in_array($validated['payment_method'], ['va', 'qris'])) {
-            // Ambil data user untuk detail customer di Midtrans
             $user = User::find($validated['user_id']);
 
-            // Ambil instance transaksi yang baru saja dibuat (ID ada di respon PaymentService)
-            // Catatan: Pastikan PaymentService mengembalikan ID transaksi atau modelnya
             $transaction = \App\Models\Transaction::find($res['transaction_id']);
 
             $midtransService = new \App\Http\Services\MidtransService();
@@ -303,7 +330,6 @@ class ManageUserController extends Controller
             $transaction->snap_token = $snapToken;
             $transaction->save();
 
-            // Tambahkan snap_token ke dalam respon agar bisa dibaca Vue
             $res['snap_token'] = $snapToken;
         }
 

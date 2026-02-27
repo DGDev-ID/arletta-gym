@@ -17,6 +17,31 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
+    public static function processInstallment (UserPtPackageInstalment $userPtPackageInstallment, $paymentMethod, $userId) {
+        $midtransFee = self::calculatePaymentFee($paymentMethod, $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee);
+
+        $transaction = new Transaction([
+            'user_id' => $userId,
+            'method' => $paymentMethod,
+            'transaction_type' => 'installment_pt',
+            'full_pt_id' => $userPtPackageInstallment->userPtPackage->ptPackage->id,
+            'installment_pt_id' => $userPtPackageInstallment->id,
+            'price' => $userPtPackageInstallment->price,
+            'ppn_fee' => $userPtPackageInstallment->ppn_fee,
+            'midtrans_fee' => $midtransFee,
+            'description' => 'Installment pay',
+            'total_price' => $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee + $midtransFee,
+            'status' => 'pending'
+        ]);
+        $transaction->save();
+
+        $transaction->transactionDetails()->create([
+            'status' => 'pending',
+        ]);
+
+        return $transaction;
+    }
+
     public static function processPayment(array $data)
     {
         $validated = self::validateRequest($data);
@@ -51,7 +76,6 @@ class PaymentService
             }
         }
 
-        // 3. Pricing Logic
         $ppnRate = 0.11;
         $netPrice = max(0, $currentPrice);
         $isDP = ($validated['payment_type'] === 'dp_payment' && !$isMembership);
@@ -59,31 +83,29 @@ class PaymentService
         return DB::transaction(function () use ($validated, $user, $item, $isMembership, $isDP, $netPrice, $ppnRate, $appliedPromos, $bonusValue) {
 
             $paymentDetails = self::preparePaymentDetails($validated, $netPrice, $ppnRate, $isDP);
-
             $baseDuration = $isMembership ? $item->duration_in_days : $item->duration_in_sessions;
             $totalSessionsOrDays = $baseDuration + $bonusValue;
 
-            // 4. Persistence Logic
-            $ptPackageId = null;
+            $installmentPtId = null;
             $trxType = $isMembership ? 'membership' : ($isDP ? 'installment_pt' : 'full_pt');
 
-            if (!$isMembership) {
-                // Create PT Package record
-                $userPtPackage = UserPtPackage::create([
-                    'pt_package_id' => $item->id,
-                    'sessions_remaining' => $item->duration_in_sessions + $bonusValue,
-                    'status' => $isDP ? 'installment' : 'active'
-                ]);
+            if (!$isMembership && $isDP) {
+                if (!isset($validated['installment_pt_id'])) {
+                    $userPtPackage = UserPtPackage::create([
+                        'pt_package_id' => $item->id,
+                        'sessions_remaining' => $totalSessionsOrDays,
+                        'status' => 'instalment'
+                    ]);
 
-                UserPtPackageMember::create([
-                    'user_pt_package_id' => $userPtPackage->id,
-                    'user_id' => $user->id
-                ]);
+                    UserPtPackageMember::create([
+                        'user_pt_package_id' => $userPtPackage->id,
+                        'user_id' => $user->id
+                    ]);
 
-                $ptPackageId = $userPtPackage->id;
-
-                if ($isDP) {
-                    self::createInstallments($userPtPackage->id, $item->name, $paymentDetails);
+                    $dp = self::createInstallments($userPtPackage->id, $item->name, $paymentDetails);
+                    $installmentPtId = $dp->id;
+                } else {
+                    $installmentPtId = $validated['installment_pt_id'];
                 }
             }
 
@@ -93,15 +115,15 @@ class PaymentService
                 'va'     => ['m' => 'midtrans', 'd' => 'va'],
                 'qris'   => ['m' => 'midtrans', 'd' => 'qris']
             ];
-
+            $finalInstallmentId = ($trxType === 'installment_pt') ? $installmentPtId : null;
             $transaction = Transaction::create([
                 'user_id' => $user->id,
                 'method' => $trxMapping[$validated['payment_method']]['m'],
                 'method_midtrans_detail' => $trxMapping[$validated['payment_method']]['d'],
                 'transaction_type' => $trxType,
                 'membership_id' => $isMembership ? $item->id : null,
-                'full_pt_id' => (!$isMembership && !$isDP) ? $item->id : null,
-                'installment_pt_id' => $ptPackageId,
+                'full_pt_id' => (!$isMembership) ? $item->id : null,
+                'installment_pt_id' => (!$isMembership && $isDP) ? $finalInstallmentId : null,
                 'price' => $paymentDetails['p1_base'],
                 'midtrans_fee' => $paymentDetails['p1_fee'],
                 'ppn_fee' => $paymentDetails['p1_ppn'],
@@ -112,8 +134,8 @@ class PaymentService
             ]);
 
             $transaction->transactionDetails()->create([
-                'status'=>'pending',
-            ]); 
+                'status' => 'pending',
+            ]);
 
             return self::formatResponse($transaction, $isDP, $item->name, $appliedPromos, $bonusValue, $netPrice, $paymentDetails);
         });
@@ -158,7 +180,7 @@ class PaymentService
         // P1 Total Calculation
         $details['p1_total'] = $details['p1_base'] + $details['p1_ppn'] + $details['p1_fee'];
 
-        UserPtPackageInstalment::create([
+        $dp = UserPtPackageInstalment::create([
             'user_pt_package_id' => $packageId,
             'description' => "DP Payment untuk $itemName",
             'price' => $details['p1_base'],
@@ -175,6 +197,8 @@ class PaymentService
             'status' => 'unpaid',
             'must_paid_before' => now()->addDays(30)
         ]);
+
+        return $dp;
     }
 
     private static function formatResponse(Transaction $transaction, $isDP, $itemName, $promos, $bonus, $net, $details)
@@ -251,6 +275,7 @@ class PaymentService
                 }
             }],
             'gym_id' => 'required|exists:master_gyms,id',
+            'installment_pt_id' => ['nullable', 'exists:user_pt_package_instalments,id'],
             'transaction_type' => ['required', Rule::in(['membership', 'pt'])],
             'type_id' => 'required|integer',
             'payment_method' => ['required', Rule::in(['manual', 'va', 'qris'])],

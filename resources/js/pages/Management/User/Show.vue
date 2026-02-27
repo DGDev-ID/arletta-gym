@@ -39,7 +39,60 @@ const props = defineProps<{
     user: any,
     gyms: Gym[],
     pendingTransactions: any[]
+    pendingInstallments: any[]
 }>();
+
+const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>({});
+const availableMethods = ['manual', 'va', 'qris'] as const;
+const calculateInstallmentTotal = (installment: any) => {
+    const method = installmentPaymentMethods.value[installment.id] || 'manual';
+    const base = parseFloat(installment.price) + parseFloat(installment.ppn_fee);
+
+    let fee = 0;
+    if (method === 'va') fee = 4000;
+    else if (method === 'qris') fee = base * 0.007; // Sesuai logika code 0.7%
+
+    return {
+        base: base,
+        fee: fee,
+        total: base + fee
+    };
+};
+
+const handlePayInstallment = async (installment: any) => {
+    const method = installmentPaymentMethods.value[installment.id];
+    if (!method) {
+        notyf.error("Silakan pilih metode pembayaran.");
+        return;
+    }
+
+    isGenerating.value = true;
+    try {
+        const payload = {
+            user_id: props.user.id,
+            payment_method: method,
+            user_pt_package_installment_id: installment.id,
+        };
+
+        const response = await axios.post('/management/user/generate-installment', payload);
+        const data = response.data;
+
+        if (data.snap_token) {
+            window.snap.pay(data.snap_token, {
+                onSuccess: () => { alert("Pembayaran Berhasil!"); router.reload(); },
+                onPending: () => { alert("Menunggu Pembayaran."); router.reload(); },
+            });
+        } else {
+            notyf.success("Invoice manual berhasil dibuat!");
+            router.reload({ only: ['pendingTransactions', 'pendingInstallments'] });
+        }
+    } catch (error: any) {
+        console.log(error);
+        alert("Gagal memproses cicilan: " + (error.response?.data?.message || 'Error'));
+    } finally {
+        isGenerating.value = false;
+    }
+};
 
 interface Membership {
     id: string | number;
@@ -165,7 +218,7 @@ const handleGeneratePayment = async () => {
         } else {
             notyf.success("Pembayaran manual berhasil dibuat!");
 
-            router.reload({ 
+            router.reload({
                 only: ['pendingTransactions'],
                 onSuccess: () => {
                     paymentForm.value.selected_item_id = '';
@@ -775,6 +828,72 @@ const downloadSVG = () => {
                                         <XCircle :size="18" />
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6 mt-8">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <History class="text-blue-500" :size="20" />
+                            <h3 class="font-bold text-lg">Tagihan Cicilan (Personal Trainer)</h3>
+                        </div>
+                        <span class="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
+                            {{ pendingInstallments.length }} Tagihan
+                        </span>
+                    </div>
+                    <hr class="border-muted" />
+
+                    <div v-if="pendingInstallments.length === 0" class="text-center py-8 text-muted-foreground">
+                        <p>Tidak ada cicilan yang perlu dibayar.</p>
+                    </div>
+
+                    <div v-else class="grid grid-cols-1 gap-6">
+                        <div v-for="inst in pendingInstallments" :key="inst.id"
+                            class="border rounded-2xl overflow-hidden bg-muted/10">
+
+                            <div class="p-4 flex flex-col md:flex-row justify-between gap-4">
+                                <div class="space-y-1">
+                                    <p class="font-bold text-sm">{{ inst.description }}</p>
+                                    <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price) +
+                                            parseFloat(inst.ppn_fee)) }}</b></span>
+                                        <span class="text-red-500">Jatuh Tempo: {{ inst.must_paid_before }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button v-for="m in availableMethods" :key="m"
+                                        @click="installmentPaymentMethods[inst.id] = m"
+                                        :class="installmentPaymentMethods[inst.id] === m ? 'bg-primary text-white border-primary' : 'bg-white border-muted'"
+                                        class="px-3 py-1.5 border rounded-lg text-xs font-bold transition-all uppercase">
+                                        {{ m }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-muted/30 p-4 border-t flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div class="flex gap-4 text-xs">
+                                    <div v-if="installmentPaymentMethods[inst.id]">
+                                        <span class="text-muted-foreground">Biaya Layanan: </span>
+                                        <span class="font-bold text-orange-600">+ {{
+                                            formatRupiah(calculateInstallmentTotal(inst).fee) }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-muted-foreground">Total Bayar: </span>
+                                        <span class="font-black text-primary text-sm">{{
+                                            formatRupiah(calculateInstallmentTotal(inst).total) }}</span>
+                                    </div>
+                                </div>
+
+                                <button @click="handlePayInstallment(inst)"
+                                    :disabled="isGenerating || !installmentPaymentMethods[inst.id]"
+                                    class="w-full md:w-auto px-6 py-2 bg-foreground text-background rounded-xl font-bold text-xs hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                    <Loader2 v-if="isGenerating" :size="14" class="animate-spin" />
+                                    BAYAR SEKARANG
+                                </button>
                             </div>
                         </div>
                     </div>

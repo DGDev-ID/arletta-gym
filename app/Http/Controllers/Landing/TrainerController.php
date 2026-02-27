@@ -28,7 +28,6 @@ class TrainerController extends Controller
                     'gender' => $trainer->userDetail->gender ?? null,
                     'address' => $trainer->userDetail->address ?? null,
                     'phone_number' => $trainer->userDetail->phone_number ?? null,
-                    'membership_end_at' => $trainer->userDetail->membership_end_at ?? null,
                 ];
             });
 

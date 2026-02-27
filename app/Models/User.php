@@ -120,4 +120,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(TransactionDetail::class, 'confirmed_by');
     }
+
+    public function userGyms()
+    {
+        return $this->belongsToMany(UserGym::class, 'user_gyms', 'user_id', 'gym_id');
+    }
 }

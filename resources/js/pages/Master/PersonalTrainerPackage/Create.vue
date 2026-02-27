@@ -98,7 +98,7 @@ const submit = () => {
 
                             <div v-for="(promo, index) in form.promos" :key="index"
                                 class="p-4 border rounded-xl bg-muted/20 relative space-y-4">
-                                <button v-if="form.promos.length > 1" type="button" @click="removePromo(index)"
+                                <button v-if="form.promos.length > 0" type="button" @click="removePromo(index)"
                                     class="absolute -top-2 -right-2 bg-destructive text-white rounded-full w-6 h-6 text-xs flex items-center justify-center">
                                     ✕
                                 </button>

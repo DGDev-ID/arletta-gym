@@ -37,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('user/gym-details/{gym}', [ManageUserController::class, 'getGymDetails']);
         Route::post('user/check-promo', [ManageUserController::class, 'checkPromoCode']);
         Route::post('user/generate-payment', [ManageUserController::class, 'generatePayment'])->name('user.generate-payment');
+        Route::post('user/generate-installment', [ManageUserController::class, 'generateInstallment'])->name('user.generate-installment');
         Route::post('/user/transactions/{transaction}/manual-action', [ManageUserController::class, 'approveOrRejectManualPayment'])
             ->name('management.user.transactions.manual-action');
 

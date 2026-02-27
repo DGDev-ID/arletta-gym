@@ -14,7 +14,6 @@ class UserDetail extends Model
         'gender',
         'address',
         'phone_number',
-        'membership_end_at'
     ];
 
     // Relations
