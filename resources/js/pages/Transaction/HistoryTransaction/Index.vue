@@ -109,8 +109,7 @@ function closeModal() {
                 <div class="mt-4 mb-6">
                     <Pagination :links="props.transactions.links" />
                 </div>
-                    <!-- Modal Detail Transaksi dihapus, sekarang pindah route ke detail -->
-                    </div>
+                </div>
             </div>
         </div>
     </AppLayout>
