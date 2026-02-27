@@ -111,6 +111,10 @@ class PaymentService
                 'sessions_or_days' => $totalSessionsOrDays
             ]);
 
+            $transaction->transactionDetails()->create([
+                'status'=>'pending',
+            ]); 
+
             return self::formatResponse($transaction, $isDP, $item->name, $appliedPromos, $bonusValue, $netPrice, $paymentDetails);
         });
     }

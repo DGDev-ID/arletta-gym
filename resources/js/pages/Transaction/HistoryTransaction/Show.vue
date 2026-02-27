@@ -3,6 +3,12 @@ import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatRupiah } from '@/helpers/formatRupiah';
+import { BreadcrumbItem } from '@/types';
+
+const breadcrumbItems: BreadcrumbItem[] = [
+    { title: 'History Transaction', href: '/transaction/history' },
+    { title: 'Detail Transaction', href: '' },
+];
 
 const props = defineProps<{ transaction: any }>();
 
@@ -10,7 +16,7 @@ const trx = computed(() => props.transaction);
 </script>
 
 <template>
-    <AppLayout>
+    <AppLayout :breadcrumbs="breadcrumbItems">
         <Head :title="trx ? ('Detail Transaction #' + (trx.unique_id || trx.id)) : 'Detail Transaction'" />
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6">
