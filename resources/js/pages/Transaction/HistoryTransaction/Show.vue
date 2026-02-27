@@ -54,6 +54,87 @@ const trx = computed(() => props.transaction);
                             <div><span class="text-muted-foreground text-xs">Sesi / Hari</span><div class="font-medium">{{ trx.sessions_or_days || '-' }}</div></div>
                         </div>
                     </div>
+                    <!-- Timeline Tracker -->
+<div v-if="trx.transaction_details && trx.transaction_details.length" class="mt-10">
+
+    <h3 class="font-bold text-lg mb-8">
+        Riwayat Status Transaksi
+    </h3>
+
+    <div class="relative max-w-xl">
+
+        <!-- GARIS FULL (dibuat sekali saja) -->
+        <div class="absolute left-[150px] top-0 bottom-0 w-0.5 bg-zinc-300 dark:bg-zinc-700"></div>
+
+        <div class="flex flex-col gap-10">
+
+            <div 
+                v-for="detail in trx.transaction_details" 
+                :key="detail.id" 
+                class="flex relative"
+            >
+
+                <!-- TANGGAL -->
+                <div class="w-[140px] text-right pr-6 flex items-center justify-end">
+                    <span 
+                        v-if="detail.created_at"
+                        class="text-sm text-zinc-500 dark:text-zinc-400"
+                    >
+                        {{ new Date(detail.created_at).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) }}
+                    </span>
+                </div>
+
+                <!-- DOT + CONTENT -->
+                <div class="flex-1 flex items-center relative">
+
+                    <!-- DOT -->
+                    <div class="w-6 flex justify-center z-8">
+                        <div 
+                            class="w-4 h-4 rounded-full"
+                            :class="[
+                                detail.status === 'success' ? 'bg-emerald-500' :
+                                detail.status === 'pending' ? 'bg-amber-400' :
+                                'bg-rose-500'
+                            ]"
+                        ></div>
+                    </div>
+
+                    <!-- STATUS & DESC -->
+                    <div class="ml-4">
+                        <span :class="[
+                            'inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2',
+                            detail.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                            detail.status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                            'bg-rose-50 text-rose-700'
+                        ]">
+                            {{
+                                detail.status === 'success' ? 'Paid' :
+                                detail.status === 'pending' ? 'Pending' :
+                                'Failed'
+                            }}
+                        </span>
+
+                        <div 
+                            v-if="detail.description"
+                            class="text-sm text-zinc-600 dark:text-zinc-300"
+                        >
+                            {{ detail.description }}
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
                 </div>
                 <div v-else class="rounded-2xl border bg-background shadow-sm p-8 text-center text-muted-foreground">
                     <h2 class="text-lg font-semibold mb-6">Detail Transaksi</h2>
