@@ -43,19 +43,8 @@ class ManageUserController extends Controller
             });
         });
 
-        // 🔥 Custom Order by Role Hierarchy (NO JOIN)
-        $query->orderByRaw("
-            CASE 
-                WHEN (SELECT r.name FROM roles r ...) = 'Super Admin' THEN 1
-                WHEN (SELECT r.name FROM roles r ...) = 'Admin' THEN 2
-                WHEN (SELECT r.name FROM roles r ...) = 'Personal Trainer' THEN 3
-                WHEN (SELECT r.name FROM roles r ...) = 'User' THEN 4
-                ELSE 5
-            END
-        ");
-
         // Secondary order
-        $query->orderBy('users.created_at', 'desc');
+        $query->orderBy('users.created_at', 'asc');
 
         return Inertia::render('Management/User/Index', [
             'users' => $query
