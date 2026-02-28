@@ -45,22 +45,14 @@ class ManageUserController extends Controller
 
         // 🔥 Custom Order by Role Hierarchy (NO JOIN)
         $query->orderByRaw("
-            FIELD(
-                (
-                    SELECT r.name
-                    FROM roles r
-                    INNER JOIN model_has_roles mhr 
-                        ON r.id = mhr.role_id
-                    WHERE mhr.model_id = users.id
-                    AND mhr.model_type = ?
-                    LIMIT 1
-                ),
-                'Super Admin',
-                'Admin',
-                'Personal Trainer',
-                'User'
-            )
-        ", [User::class]);
+            CASE 
+                WHEN (SELECT r.name FROM roles r ...) = 'Super Admin' THEN 1
+                WHEN (SELECT r.name FROM roles r ...) = 'Admin' THEN 2
+                WHEN (SELECT r.name FROM roles r ...) = 'Personal Trainer' THEN 3
+                WHEN (SELECT r.name FROM roles r ...) = 'User' THEN 4
+                ELSE 5
+            END
+        ");
 
         // Secondary order
         $query->orderBy('users.created_at', 'desc');
