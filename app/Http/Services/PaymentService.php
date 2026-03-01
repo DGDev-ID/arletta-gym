@@ -18,7 +18,9 @@ use Illuminate\Validation\ValidationException;
 class PaymentService
 {
     public static function processInstallment (UserPtPackageInstalment $userPtPackageInstallment, $paymentMethod, $userId) {
-        $midtransFee = self::calculatePaymentFee($paymentMethod, $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee);
+        // PPN disabled - harga sudah termasuk PPN
+        // $midtransFee = self::calculatePaymentFee($paymentMethod, $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee);
+        $midtransFee = self::calculatePaymentFee($paymentMethod, $userPtPackageInstallment->price);
 
         $transaction = new Transaction([
             'user_id' => $userId,
@@ -27,10 +29,12 @@ class PaymentService
             'full_pt_id' => $userPtPackageInstallment->userPtPackage->ptPackage->id,
             'installment_pt_id' => $userPtPackageInstallment->id,
             'price' => $userPtPackageInstallment->price,
-            'ppn_fee' => $userPtPackageInstallment->ppn_fee,
+            'ppn_fee' => 0, // PPN disabled - $userPtPackageInstallment->ppn_fee,
             'midtrans_fee' => $midtransFee,
             'description' => 'Installment pay',
-            'total_price' => $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee + $midtransFee,
+            // PPN disabled - harga sudah termasuk PPN
+            // 'total_price' => $userPtPackageInstallment->price + $userPtPackageInstallment->ppn_fee + $midtransFee,
+            'total_price' => $userPtPackageInstallment->price + $midtransFee,
             'status' => 'pending'
         ]);
         $transaction->save();
@@ -76,7 +80,9 @@ class PaymentService
             }
         }
 
-        $ppnRate = 0.11;
+        // PPN disabled - harga sudah termasuk PPN
+        // $ppnRate = 0.11;
+        $ppnRate = 0;
         $netPrice = max(0, $currentPrice);
         $isDP = ($validated['payment_type'] === 'dp_payment' && !$isMembership);
 

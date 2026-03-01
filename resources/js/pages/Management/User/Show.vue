@@ -46,7 +46,9 @@ const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>(
 const availableMethods = ['manual', 'va', 'qris'] as const;
 const calculateInstallmentTotal = (installment: any) => {
     const method = installmentPaymentMethods.value[installment.id] || 'manual';
-    const base = parseFloat(installment.price) + parseFloat(installment.ppn_fee);
+    // PPN disabled - harga sudah termasuk PPN
+    // const base = parseFloat(installment.price) + parseFloat(installment.ppn_fee);
+    const base = parseFloat(installment.price);
 
     let fee = 0;
     if (method === 'va') fee = 4000;
@@ -258,13 +260,19 @@ const calculation = computed(() => {
     });
 
     const subtotal = Math.max(0, basePrice - totalDiscount);
-    const ppn = subtotal * 0.11;
+    // PPN disabled - harga sudah termasuk PPN
+    // const ppn = subtotal * 0.11;
+    const ppn = 0;
 
     let fee = 0;
     if (paymentForm.value.payment_type === 'va') fee = 4000;
-    else if (paymentForm.value.payment_type === 'qris') fee = (subtotal + ppn) * 0.007;
+    // PPN disabled - fee dihitung dari subtotal saja
+    // else if (paymentForm.value.payment_type === 'qris') fee = (subtotal + ppn) * 0.007;
+    else if (paymentForm.value.payment_type === 'qris') fee = subtotal * 0.007;
 
-    const grandTotal = subtotal + ppn + fee;
+    // PPN disabled - grandTotal tanpa ppn
+    // const grandTotal = subtotal + ppn + fee;
+    const grandTotal = subtotal + fee;
 
     // 🔥 DP Logic
     let payableNow = grandTotal;
@@ -689,10 +697,11 @@ const downloadSVG = () => {
 
                                 <hr class="border-muted border-dashed" />
 
-                                <div class="flex justify-between text-muted-foreground">
+                                <!-- PPN disabled - harga sudah termasuk PPN -->
+                                <!-- <div class="flex justify-between text-muted-foreground">
                                     <span>PPN (11%)</span>
                                     <span>{{ calculation.ppn.toLocaleString() }}</span>
-                                </div>
+                                </div> -->
 
                                 <div class="flex justify-between text-orange-600 italic">
                                     <span>Biaya Layanan ({{ paymentForm.payment_type.toUpperCase() }})</span>
@@ -857,8 +866,10 @@ const downloadSVG = () => {
                                 <div class="space-y-1">
                                     <p class="font-bold text-sm">{{ inst.description }}</p>
                                     <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                                        <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price) +
-                                            parseFloat(inst.ppn_fee)) }}</b></span>
+                                        <!-- PPN disabled - harga sudah termasuk PPN -->
+                                        <!-- <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price) +
+                                            parseFloat(inst.ppn_fee)) }}</b></span> -->
+                                        <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price)) }}</b></span>
                                         <span class="text-red-500">Jatuh Tempo: {{ inst.must_paid_before }}</span>
                                     </div>
                                 </div>

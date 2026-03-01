@@ -49,7 +49,8 @@ const trx = computed(() => props.transaction);
                             <div><span class="text-muted-foreground text-xs">Metode</span><div class="font-medium">{{ trx.method || 'manual' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Harga</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.price) || 0) }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Biaya Midtrans</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.midtrans_fee) || 0) }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Biaya PPN</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.ppn_fee) || 0) }}</div></div>
+                            <!-- PPN disabled - harga sudah termasuk PPN -->
+                            <!-- <div><span class="text-muted-foreground text-xs">Biaya PPN</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.ppn_fee) || 0) }}</div></div> -->
                             <div><span class="text-muted-foreground text-xs">Total Biaya</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.total_price) || 0) }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Sesi / Hari</span><div class="font-medium">{{ trx.sessions_or_days || '-' }}</div></div>
                         </div>
