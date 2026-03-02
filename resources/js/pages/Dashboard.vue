@@ -13,6 +13,10 @@ interface Stats {
     new_users: number
     active_users: number
     inactive_users: number
+    total_pt: number
+    new_pt: number
+    active_pt: number
+    inactive_pt: number
     total_transactions: number
     paid_transactions: number
     pending_transactions: number
@@ -150,7 +154,7 @@ const revenueChartOptions = computed<any>(() => ({
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
 
             <!-- Stat Cards -->
-            <div class="grid gap-4 md:grid-cols-3">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 
                 <!-- Total Users -->
                 <Card class="border border-zinc-100 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden">
@@ -164,7 +168,7 @@ const revenueChartOptions = computed<any>(() => ({
                             </div>
                             <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                                 <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg>
-                                +8.2%
+                                +{{ stats.new_users }}
                             </span>
                         </div>
                         <!-- Label + Value -->
@@ -190,7 +194,43 @@ const revenueChartOptions = computed<any>(() => ({
                     </CardContent>
                 </Card>
 
-                <!-- Transaksi Bulan Ini -->
+                <!-- Total PT -->
+                <Card class="border border-zinc-100 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden">
+                    <CardContent class="p-6">
+                        <!-- Top row: icon + badge -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                                </svg>
+                            </div>
+                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg>
+                                +{{ stats.new_pt }}
+                            </span>
+                        </div>
+                        <!-- Label + Value -->
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Total Personal Trainer</p>
+                        <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">{{ stats.total_pt.toLocaleString('id-ID') }}</p>
+                        <!-- Footer stats -->
+                        <div class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                            <div class="text-center">
+                                <p class="text-xs text-zinc-400 dark:text-zinc-500">Baru</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">+{{ stats.new_pt }}</p>
+                            </div>
+                            <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
+                            <div class="text-center">
+                                <p class="text-xs text-zinc-400 dark:text-zinc-500">Aktif</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ stats.active_pt }}</p>
+                            </div>
+                            <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
+                            <div class="text-center">
+                                <p class="text-xs text-zinc-400 dark:text-zinc-500">Nonaktif</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ stats.inactive_pt }}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
                 <Card class="border border-zinc-100 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden">
                     <CardContent class="p-6">
                         <!-- Top row: icon + badge -->
