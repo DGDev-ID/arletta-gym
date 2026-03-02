@@ -174,7 +174,7 @@ const revenueChartOptions = computed<any>(() => ({
                             </span>
                         </div>
                         <!-- Label + Value -->
-                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Total Users</p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Total Members</p>
                         <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">{{ stats.total_users.toLocaleString('id-ID') }}</p>
                         <!-- Footer stats -->
                         <div class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
