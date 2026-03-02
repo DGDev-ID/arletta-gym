@@ -84,6 +84,7 @@ class DashboardController extends Controller
         // --- 12-Month Chart Data ---
         $chartRevenue    = [];
         $chartNewMembers = [];
+        $chartNewPt      = [];
         $chartMonths     = [];
 
         for ($i = 11; $i >= 0; $i--) {
@@ -94,12 +95,19 @@ class DashboardController extends Controller
                 ->where('status', 'success')
                 ->sum('total_price');
 
-            $newMembers = User::whereMonth('created_at', $month->month)
+            $newMembers = User::role('User')
+                ->whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->count();
+
+            $newPt = User::role('Personal Trainer')
+                ->whereMonth('created_at', $month->month)
                 ->whereYear('created_at', $month->year)
                 ->count();
 
             $chartRevenue[]    = round($revenue / 1_000_000, 2); // in millions
             $chartNewMembers[] = $newMembers;
+            $chartNewPt[]      = $newPt;
             $chartMonths[]     = $month->format('M Y');
         }
 
@@ -150,6 +158,7 @@ class DashboardController extends Controller
                 'months'      => $chartMonths,
                 'revenue'     => $chartRevenue,
                 'new_members' => $chartNewMembers,
+                'new_pt'      => $chartNewPt,
             ],
             'recent_transactions' => $recentTransactions,
         ]);
