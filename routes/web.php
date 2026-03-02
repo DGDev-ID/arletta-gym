@@ -9,6 +9,7 @@ use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
 use App\Http\Controllers\Master\MasterPtPackageController;
+use App\Http\Controllers\ScanQRCodeController;
 use App\Http\Controllers\Transaction\HistoryTransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -50,6 +51,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('transaction')->name('transaction.')->group(function() {
         Route::resource('history', HistoryTransactionController::class);
     });
+
+    Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');
+    Route::post('scan-qr', [ScanQRCodeController::class, 'scan'])->name('scan-qr.scan');
 });
 
 require __DIR__ . '/settings.php';

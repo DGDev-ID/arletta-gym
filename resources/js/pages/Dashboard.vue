@@ -31,6 +31,7 @@ interface ChartData {
     months: string[]
     revenue: number[]
     new_members: number[]
+    new_pt: number[]
 }
 
 interface RecentTransaction {
@@ -104,8 +105,9 @@ const paidRate = computed(() => {
 
 // Chart series from server data
 const revenueSeries = computed(() => [
-    { name: 'Pendapatan (Jt)', data: props.chart_data.revenue },
-    { name: 'User Baru',       data: props.chart_data.new_members },
+    { name: 'Pendapatan (Jt)',   data: props.chart_data.revenue },
+    { name: 'User Baru',         data: props.chart_data.new_members },
+    { name: 'PT Baru',           data: props.chart_data.new_pt },
 ])
 
 const revenueChartOptions = computed<any>(() => ({
@@ -116,7 +118,7 @@ const revenueChartOptions = computed<any>(() => ({
         fontFamily: 'Outfit, sans-serif',
         background: 'transparent'
     },
-    colors: ['#465FFF', '#10B981'],
+    colors: ['#465FFF', '#10B981', '#A855F7'],
     dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 2 },
     fill: { 

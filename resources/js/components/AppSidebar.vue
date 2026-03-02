@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { CalendarDays, CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users, BookOpen } from 'lucide-vue-next';
+import { CalendarDays, CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users, BookOpen, ScanLine } from 'lucide-vue-next';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -80,6 +80,14 @@ const transactionNavItems: NavItem[] = [
         icon: History, 
     },
 ];
+
+const scanNavItems: NavItem[] = [
+    {
+        title: "Scan QR Code",
+        href: '/scan-qr',
+        icon: ScanLine,
+    },
+];
 </script>
 
 <template>
@@ -101,6 +109,7 @@ const transactionNavItems: NavItem[] = [
             <NavMain title="Master Data" :items="masterDataNavItems" />
             <NavMain title="Management" :items="managementNavItems" />
             <NavMain title="Transaction" :items="transactionNavItems" />
+            <NavMain title="Scan" :items="scanNavItems" />
         </SidebarContent>
 
         <SidebarFooter>
