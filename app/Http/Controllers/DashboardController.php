@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GymPt;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserGym;
@@ -14,18 +15,38 @@ class DashboardController extends Controller
     {
         $now = Carbon::now();
 
-        // --- User Stats ---
-        $totalUsers = User::count();
+        // --- User Stats (role: User) ---
+        $userRoleQuery = fn () => User::whereHas('roles', fn ($q) => $q->where('name', 'User'));
 
-        $newUsersThisMonth = User::whereMonth('created_at', $now->month)
+        $totalUsers = $userRoleQuery()->count();
+
+        $newUsersThisMonth = $userRoleQuery()
+            ->whereMonth('created_at', $now->month)
             ->whereYear('created_at', $now->year)
             ->count();
 
         $activeUsers = UserGym::where('membership_end_at', '>=', $now->toDateString())
+            ->whereHas('user', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', 'User')))
             ->distinct('user_id')
             ->count('user_id');
 
         $inactiveUsers = max(0, $totalUsers - $activeUsers);
+
+        // --- PT Stats (role: Personal Trainer) ---
+        $ptRoleQuery = fn () => User::whereHas('roles', fn ($q) => $q->where('name', 'Personal Trainer'));
+
+        $totalPt = $ptRoleQuery()->count();
+
+        $newPtThisMonth = $ptRoleQuery()
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
+
+        $activePt = GymPt::whereHas('pt', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', 'Personal Trainer')))
+            ->distinct('pt_id')
+            ->count('pt_id');
+
+        $inactivePt = max(0, $totalPt - $activePt);
 
         // --- Transaction Stats (this month) ---
         $txBaseQuery = fn () => Transaction::whereMonth('created_at', $now->month)
@@ -108,11 +129,15 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'stats' => [
-                'total_users'         => $totalUsers,
-                'new_users'           => $newUsersThisMonth,
-                'active_users'        => $activeUsers,
-                'inactive_users'      => $inactiveUsers,
-                'total_transactions'  => $totalTransactions,
+                'total_users'          => $totalUsers,
+                'new_users'            => $newUsersThisMonth,
+                'active_users'         => $activeUsers,
+                'inactive_users'       => $inactiveUsers,
+                'total_pt'             => $totalPt,
+                'new_pt'               => $newPtThisMonth,
+                'active_pt'            => $activePt,
+                'inactive_pt'          => $inactivePt,
+                'total_transactions'   => $totalTransactions,
                 'paid_transactions'   => $paidTransactions,
                 'pending_transactions'=> $pendingTransactions,
                 'failed_transactions' => $failedTransactions,
