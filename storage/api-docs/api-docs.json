@@ -1,0 +1,1282 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Arletta Gym API",
+        "description": "REST API for Arletta Gym Landing Page — Authentication, Memberships, Trainers, Schedules, Bookings, Payments, Signatures",
+        "contact": {
+            "name": "Arletta Gym Developer",
+            "email": "admin@arlettagym.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Local Development"
+        }
+    ],
+    "paths": {
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a new user",
+                "operationId": "c7bb21a0d87049e161b8e4c9b0d909f2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "081234567890"
+                                    },
+                                    "health_policy": {
+                                        "properties": {
+                                            "answers": {
+                                                "type": "array",
+                                                "items": {
+                                                    "properties": {
+                                                        "question": {
+                                                            "type": "string"
+                                                        },
+                                                        "answer": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "ya",
+                                                                "tidak"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "agreed_health_accuracy": {
+                                                "type": "boolean"
+                                            },
+                                            "agreed_terms": {
+                                                "type": "boolean"
+                                            },
+                                            "agreed_risk": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registration successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "type": "object"
+                                                },
+                                                "token": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login user",
+                "operationId": "dd51a484b7fa0f97c7680fdbde14cf5f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "type": "object"
+                                                },
+                                                "token": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout user",
+                "operationId": "df9bdc6c7a6d9f20b983526b2ec0f698",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get authenticated user profile",
+                "operationId": "b5de204f5e452ef51327c691aa99e77c",
+                "responses": {
+                    "200": {
+                        "description": "User profile retrieved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Send password reset link",
+                "operationId": "f51c7074de53475eab87e336cc4e06a6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reset link sent"
+                    }
+                }
+            }
+        },
+        "/api/auth/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset password with token",
+                "operationId": "96e44e1ebcd811418fd95ee4c56162f0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    }
+                }
+            }
+        },
+        "/api/bookings": {
+            "get": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Get user's bookings",
+                "operationId": "4535e967ef15bc76dadf1efa40192f0d",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "confirmed",
+                                "cancelled",
+                                "completed",
+                                "no-show"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bookings retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Book a class",
+                "operationId": "43e6dcca842886074084b8db86af7802",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "schedule_id"
+                                ],
+                                "properties": {
+                                    "schedule_id": {
+                                        "type": "integer"
+                                    },
+                                    "booking_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "in-person",
+                                            "online"
+                                        ],
+                                        "example": "in-person"
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Booking created"
+                    },
+                    "409": {
+                        "description": "Class is full or already booked"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/bookings/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Cancel a booking (double verification)",
+                "operationId": "9d8eeb663633d4d68870aa36255983b7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "verification"
+                                ],
+                                "properties": {
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "verification": {
+                                        "description": "Must type 'CANCEL' to confirm",
+                                        "type": "string",
+                                        "example": "CANCEL"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Booking cancelled"
+                    },
+                    "422": {
+                        "description": "Verification failed"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/bookings/{id}/reschedule": {
+            "post": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Reschedule a booking (PT or user)",
+                "operationId": "dceb798d86838ccabf4de248349a5326",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "new_schedule_id",
+                                    "reason"
+                                ],
+                                "properties": {
+                                    "new_schedule_id": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Booking rescheduled"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/memberships": {
+            "get": {
+                "tags": [
+                    "Memberships"
+                ],
+                "summary": "List all membership plans",
+                "operationId": "020e3b1359f517bbfe750f7efd9e0e7b",
+                "parameters": [
+                    {
+                        "name": "gym_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Memberships retrieved"
+                    }
+                }
+            }
+        },
+        "/api/memberships/{id}": {
+            "get": {
+                "tags": [
+                    "Memberships"
+                ],
+                "summary": "Get membership plan detail",
+                "operationId": "20102695f2bf440f8a7fe8ae28e9ef7d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Membership detail retrieved"
+                    }
+                }
+            }
+        },
+        "/api/payments/create": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Create a payment for membership or PT package",
+                "operationId": "26dedad4479cbe8f6d6a694bd352a654",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "gym_id",
+                                    "transaction_type",
+                                    "type_id",
+                                    "payment_method"
+                                ],
+                                "properties": {
+                                    "gym_id": {
+                                        "type": "integer"
+                                    },
+                                    "transaction_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "membership",
+                                            "pt"
+                                        ]
+                                    },
+                                    "type_id": {
+                                        "description": "membership_id or pt_package_id",
+                                        "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "manual",
+                                            "va",
+                                            "qris"
+                                        ]
+                                    },
+                                    "payment_type": {
+                                        "description": "Required for PT",
+                                        "type": "string",
+                                        "enum": [
+                                            "full_payment",
+                                            "dp_payment"
+                                        ]
+                                    },
+                                    "dp_percent": {
+                                        "description": "Required if dp_payment",
+                                        "type": "number",
+                                        "example": 30
+                                    },
+                                    "promo_code": {
+                                        "type": "string"
+                                    },
+                                    "signature_data": {
+                                        "description": "Base64 signature for membership purchase",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "transaction_id": {
+                                                    "type": "integer"
+                                                },
+                                                "snap_token": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/payments/webhook": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Midtrans payment notification webhook",
+                "operationId": "e583bad0fbf013b8340e03f343a11bcd",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "order_id": {
+                                        "type": "string"
+                                    },
+                                    "transaction_status": {
+                                        "type": "string"
+                                    },
+                                    "fraud_status": {
+                                        "type": "string"
+                                    },
+                                    "signature_key": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed"
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "put": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Update authenticated user's profile",
+                "operationId": "f06b52ae472d7266e79c48b1af6f8e9e",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "081234567890"
+                                    },
+                                    "nik": {
+                                        "type": "string"
+                                    },
+                                    "birth_place": {
+                                        "type": "string"
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "gender": {
+                                        "type": "string",
+                                        "enum": [
+                                            "male",
+                                            "female"
+                                        ]
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/uploads": {
+            "post": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Upload a file (image)",
+                "operationId": "dfc679120c116ebd2bd9e94a6a3186e2",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "avatar",
+                                            "document",
+                                            "other"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "File uploaded successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/schedules": {
+            "get": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Get class schedules",
+                "operationId": "f21805e74c0fcc7937d0464ff67212bd",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "trainer_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "gym_class_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "gym_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Schedules retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes": {
+            "get": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Get list of gym classes",
+                "operationId": "3eed37650589e1da18ed040e0e00905a",
+                "parameters": [
+                    {
+                        "name": "gym_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Classes retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/signatures": {
+            "post": {
+                "tags": [
+                    "Signatures"
+                ],
+                "summary": "Store a digital signature",
+                "operationId": "f635896cbb848651216dd15b7f78ac7d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "signature_data"
+                                ],
+                                "properties": {
+                                    "signature_data": {
+                                        "description": "Base64 encoded signature image",
+                                        "type": "string"
+                                    },
+                                    "transaction_id": {
+                                        "type": "integer"
+                                    },
+                                    "metadata": {
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Signature stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/trainers": {
+            "get": {
+                "tags": [
+                    "Trainers"
+                ],
+                "summary": "List all trainers",
+                "operationId": "9ebe45c9993bb130b430d3409565c758",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "gym_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trainers retrieved"
+                    }
+                }
+            }
+        },
+        "/api/trainers/{id}": {
+            "get": {
+                "tags": [
+                    "Trainers"
+                ],
+                "summary": "Get trainer detail with packages",
+                "operationId": "8eee0bbcecdcee80c983b6af3c08fb8f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trainer detail retrieved"
+                    }
+                }
+            }
+        },
+        "/api/trainers/{id}/clients": {
+            "get": {
+                "tags": [
+                    "Trainers"
+                ],
+                "summary": "Get trainer's clients (PT only)",
+                "operationId": "dda25486ace83bb108f2456be63cb93a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Clients retrieved"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/trainers/clients/all": {
+            "get": {
+                "tags": [
+                    "Trainers"
+                ],
+                "summary": "Get all gym members (PT views all, not just their clients)",
+                "operationId": "db3bafe4c486a7d17ea400a830b2ea10",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All members retrieved"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/trainers/{id}/schedules": {
+            "get": {
+                "tags": [
+                    "Trainers"
+                ],
+                "summary": "Get trainer's class schedules",
+                "operationId": "c7e4435f741011e3ed864511e365b1f6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trainer schedules retrieved"
+                    }
+                }
+            }
+        },
+        "/api/waitlist": {
+            "post": {
+                "tags": [
+                    "Waitlist"
+                ],
+                "summary": "Join waitlist for a full class",
+                "operationId": "56c500078053a100ea4bd111a02737de",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "schedule_id"
+                                ],
+                                "properties": {
+                                    "schedule_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Added to waitlist",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "position": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/online-class/join": {
+            "post": {
+                "tags": [
+                    "Waitlist"
+                ],
+                "summary": "Join online class (Zoom) when in-person is full",
+                "operationId": "22893a7df44ef903bfc1dc617dd0c120",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "schedule_id"
+                                ],
+                                "properties": {
+                                    "schedule_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Zoom link will be sent via email",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "zoom_link_sent": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctum": {
+                "type": "apiKey",
+                "description": "Enter token in format: Bearer {token}",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentication endpoints"
+        },
+        {
+            "name": "Bookings",
+            "description": "Booking endpoints"
+        },
+        {
+            "name": "Memberships",
+            "description": "Membership endpoints"
+        },
+        {
+            "name": "Payments",
+            "description": "Payment endpoints"
+        },
+        {
+            "name": "Profile",
+            "description": "User profile endpoints"
+        },
+        {
+            "name": "Schedules",
+            "description": "Schedule and class endpoints"
+        },
+        {
+            "name": "Signatures",
+            "description": "Digital signature endpoints"
+        },
+        {
+            "name": "Trainers",
+            "description": "Personal trainer endpoints"
+        },
+        {
+            "name": "Waitlist",
+            "description": "Waitlist & online class fallback"
+        }
+    ]
+}

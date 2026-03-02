@@ -1,12 +1,48 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue'
+import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
+
+interface Stats {
+    total_users: number
+    new_users: number
+    active_users: number
+    inactive_users: number
+    total_transactions: number
+    paid_transactions: number
+    pending_transactions: number
+    failed_transactions: number
+    total_revenue: number
+    bulanan_revenue: number
+    personal_revenue: number
+    tahunan_revenue: number
+}
+
+interface ChartData {
+    months: string[]
+    revenue: number[]
+    new_members: number[]
+}
+
+interface RecentTransaction {
+    unique_id: string
+    member_name: string
+    package: string
+    amount: number
+    date: string
+    status: 'pending' | 'success' | 'failed'
+}
+
+const props = defineProps<{
+    stats: Stats
+    chart_data: ChartData
+    recent_transactions: RecentTransaction[]
+}>()
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,28 +51,60 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Chart data (static for now) — matches dashboard vue
-const revenueSeries = ref([
-        { name: 'Pendapatan (Jt)', data: [65, 72, 68, 75, 82, 78, 85, 90, 88, 92, 84, 95] },
-        { name: 'User Baru', data: [28, 35, 30, 32, 40, 38, 42, 48, 45, 50, 38, 52] },
-])
-
-// compute last 12 months labels (oldest -> newest)
-function last12Months(locale = 'id') {
-    const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
-    const months: string[] = []
-    const now = new Date()
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        // format like 'Feb 2026' and normalize (remove trailing dot in some locales)
-        months.push(`${fmt.format(d).replace('.', '')} ${d.getFullYear()}`)
-    }
-    return months
+// Format Rupiah
+function formatRupiah(value: number): string {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
 }
 
-const months = last12Months('id')
+function formatRupiahShort(value: number): string {
+    if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(1)} M`
+    if (value >= 1_000_000)     return `Rp ${Math.round(value / 1_000_000)} Jt`
+    if (value >= 1_000)         return `Rp ${Math.round(value / 1_000)} Rb`
+    return formatRupiah(value)
+}
 
-const revenueChartOptions = ref<any>({
+function getInitials(name: string): string {
+    return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+}
+
+const statusLabel: Record<string, string> = {
+    success: 'Paid',
+    pending: 'Pending',
+    failed:  'Gagal',
+}
+
+const statusStyle: Record<string, string> = {
+    success: 'inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-800',
+    pending: 'inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-200 dark:ring-amber-800',
+    failed:  'inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-900/30 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-800',
+}
+
+const statusDot: Record<string, string> = {
+    success: 'h-1.5 w-1.5 rounded-full bg-emerald-500',
+    pending: 'h-1.5 w-1.5 rounded-full bg-amber-400',
+    failed:  'h-1.5 w-1.5 rounded-full bg-red-500',
+}
+
+// Avatar colors cycling for member initials
+const avatarColors = [
+    'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
+    'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300',
+    'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+    'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300',
+]
+
+const paidRate = computed(() => {
+    if (!props.stats.total_transactions) return '0%'
+    return (props.stats.paid_transactions / props.stats.total_transactions * 100).toFixed(1) + '%'
+})
+
+// Chart series from server data
+const revenueSeries = computed(() => [
+    { name: 'Pendapatan (Jt)', data: props.chart_data.revenue },
+    { name: 'User Baru',       data: props.chart_data.new_members },
+])
+
+const revenueChartOptions = computed<any>(() => ({
     chart: { 
         type: 'area', 
         height: 260, 
@@ -57,7 +125,7 @@ const revenueChartOptions = ref<any>({
         } 
     },
     xaxis: { 
-        categories: months,
+        categories: props.chart_data.months,
         axisBorder: { show: false }, 
         axisTicks: { show: false },
         labels: { style: { fontSize: '12px', colors: '#6B7280', fontWeight: 500 } }
@@ -72,7 +140,7 @@ const revenueChartOptions = ref<any>({
     legend: { position: 'top', horizontalAlign: 'left', fontWeight: 600, fontSize: '13px', labels: { colors: '#374151' }, markers: { width: 10, height: 10, radius: 10 } },
     tooltip: { theme: 'light', style: { fontSize: '12px', fontFamily: 'Outfit, sans-serif' }, y: { formatter: function(value: number) { return value } } },
     markers: { size: 0, hover: { size: 5 } }
-})
+}))
 </script>
 
 <template>
@@ -101,22 +169,22 @@ const revenueChartOptions = ref<any>({
                         </div>
                         <!-- Label + Value -->
                         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Total Users</p>
-                        <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">1,248</p>
+                        <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">{{ stats.total_users.toLocaleString('id-ID') }}</p>
                         <!-- Footer stats -->
                         <div class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Baru</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">+98</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">+{{ stats.new_users }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Aktif</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">892</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ stats.active_users }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Nonaktif</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">356</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ stats.inactive_users }}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -133,28 +201,28 @@ const revenueChartOptions = ref<any>({
                                 </svg>
                             </div>
                             <span class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                71.5%
+                                {{ paidRate }}
                             </span>
                         </div>
                         <!-- Label + Value -->
                         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Transaksi Bulan Ini</p>
-                        <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">256</p>
+                        <p class="text-3xl font-bold text-zinc-900 dark:text-white mb-4">{{ stats.total_transactions }}</p>
                         <!-- progress bar removed -->
                         <!-- Status breakdown -->
                         <div class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Paid</p>
-                                <p class="text-sm font-semibold text-emerald-600">210</p>
+                                <p class="text-sm font-semibold text-emerald-600">{{ stats.paid_transactions }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Pending</p>
-                                <p class="text-sm font-semibold text-amber-500">32</p>
+                                <p class="text-sm font-semibold text-amber-500">{{ stats.pending_transactions }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Gagal</p>
-                                <p class="text-sm font-semibold text-red-500">14</p>
+                                <p class="text-sm font-semibold text-red-500">{{ stats.failed_transactions }}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -177,23 +245,22 @@ const revenueChartOptions = ref<any>({
                         </div>
                         <!-- Label + Value -->
                         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-0.5">Pendapatan Bulan Ini</p>
-                        <p class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Rp 52.000.000</p>
-                        <!-- Target progress -->
+                        <p class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">{{ formatRupiah(stats.total_revenue) }}</p>
                         <!-- Revenue breakdown -->
                         <div class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Bulanan</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Rp 18 Jt</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ formatRupiahShort(stats.bulanan_revenue) }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Personal</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Rp 12 Jt</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ formatRupiahShort(stats.personal_revenue) }}</p>
                             </div>
                             <div class="h-6 w-px bg-zinc-100 dark:bg-zinc-800"></div>
                             <div class="text-center">
                                 <p class="text-xs text-zinc-400 dark:text-zinc-500">Tahunan</p>
-                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Rp 22 Jt</p>
+                                <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ formatRupiahShort(stats.tahunan_revenue) }}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -220,7 +287,7 @@ const revenueChartOptions = ref<any>({
                     <div class="flex items-center justify-between">
                         <div>
                             <CardTitle class="text-base font-semibold text-zinc-900 dark:text-white">Transaksi Terbaru</CardTitle>
-                            <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Menampilkan 3 transaksi terakhir</p>
+                            <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Menampilkan {{ recent_transactions.length }} transaksi terakhir</p>
                         </div>
                         <Button variant="ghost" size="sm" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
                             Lihat semua
@@ -242,58 +309,38 @@ const revenueChartOptions = ref<any>({
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-zinc-50 dark:divide-zinc-800">
-                                <tr class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors duration-150">
-                                    <td class="px-6 py-4 font-mono text-xs font-medium text-zinc-500 dark:text-zinc-400">#TRX-001</td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold">AS</div>
-                                            <span class="font-medium text-zinc-800 dark:text-zinc-200">Andi Setiawan</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-zinc-600 dark:text-zinc-400">Paket Bulanan</td>
-                                    <td class="px-6 py-4 font-semibold text-zinc-800 dark:text-zinc-200">Rp 150.000</td>
-                                    <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">20 Feb 2026</td>
-                                    <td class="px-6 py-4">
-                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-800">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                            Paid
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors duration-150">
-                                    <td class="px-6 py-4 font-mono text-xs font-medium text-zinc-500 dark:text-zinc-400">#TRX-002</td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-bold">SN</div>
-                                            <span class="font-medium text-zinc-800 dark:text-zinc-200">Siti Nurhaliza</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-zinc-600 dark:text-zinc-400">Paket Personal</td>
-                                    <td class="px-6 py-4 font-semibold text-zinc-800 dark:text-zinc-200">Rp 300.000</td>
-                                    <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">22 Feb 2026</td>
-                                    <td class="px-6 py-4">
-                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-200 dark:ring-amber-800">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
-                                            Pending
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors duration-150">
-                                    <td class="px-6 py-4 font-mono text-xs font-medium text-zinc-500 dark:text-zinc-400">#TRX-003</td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 text-xs font-bold">BS</div>
-                                            <span class="font-medium text-zinc-800 dark:text-zinc-200">Budi Santoso</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-zinc-600 dark:text-zinc-400">Paket Tahunan</td>
-                                    <td class="px-6 py-4 font-semibold text-zinc-800 dark:text-zinc-200">Rp 1.500.000</td>
-                                    <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">23 Feb 2026</td>
-                                    <td class="px-6 py-4">
-                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-800">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                            Paid
-                                        </span>
+                                <template v-if="recent_transactions.length > 0">
+                                    <tr
+                                        v-for="(tx, idx) in recent_transactions"
+                                        :key="tx.unique_id"
+                                        class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors duration-150"
+                                    >
+                                        <td class="px-6 py-4 font-mono text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                            {{ tx.unique_id.substring(0, 8).toUpperCase() }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+                                                    :class="avatarColors[idx % avatarColors.length]"
+                                                >{{ getInitials(tx.member_name) }}</div>
+                                                <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ tx.member_name }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-zinc-600 dark:text-zinc-400">{{ tx.package }}</td>
+                                        <td class="px-6 py-4 font-semibold text-zinc-800 dark:text-zinc-200">{{ formatRupiah(tx.amount) }}</td>
+                                        <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">{{ tx.date }}</td>
+                                        <td class="px-6 py-4">
+                                            <span :class="statusStyle[tx.status]">
+                                                <span :class="statusDot[tx.status]"></span>
+                                                {{ statusLabel[tx.status] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr v-else>
+                                    <td colspan="6" class="px-6 py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+                                        Belum ada transaksi
                                     </td>
                                 </tr>
                             </tbody>

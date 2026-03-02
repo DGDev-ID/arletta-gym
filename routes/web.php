@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Management\ManageAdminController;
 use App\Http\Controllers\Management\ManagePersonalTrainerController;
 use App\Http\Controllers\Management\ManageUserController;
+use App\Http\Controllers\Master\MasterClassScheduleController;
+use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
 use App\Http\Controllers\Master\MasterPtPackageController;
@@ -20,14 +23,14 @@ Route::get('/', function () {
 
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('master')->name('master.')->group(function () {
         Route::resource('gym', MasterGymController::class);
         Route::resource('membership', MasterMembershipController::class);
         Route::resource('personal-trainer-package', MasterPtPackageController::class);
+        Route::resource('gym-class', MasterGymClassController::class);
+        Route::resource('class-schedule', MasterClassScheduleController::class);
     });
 
     Route::prefix('management')->name('management.')->group(function () {
