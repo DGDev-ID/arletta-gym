@@ -30,5 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Ensure API routes always return JSON, never Inertia HTML
+        $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
     })->create();

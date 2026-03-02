@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users } from 'lucide-vue-next';
+import { CalendarDays, CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users, BookOpen } from 'lucide-vue-next';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -42,6 +42,16 @@ const masterDataNavItems: NavItem[] = [
         title: "Personal Trainer Package",
         href: master.personalTrainerPackage.index(),
         icon: Package, 
+    },
+    {
+        title: "Gym Class",
+        href: '/master/gym-class',
+        icon: BookOpen,
+    },
+    {
+        title: "Class Schedule",
+        href: '/master/class-schedule',
+        icon: CalendarDays,
     },
 ];
 

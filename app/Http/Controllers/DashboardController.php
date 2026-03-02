@@ -1,0 +1,132 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Transaction;
+use App\Models\User;
+use App\Models\UserGym;
+use Carbon\Carbon;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $now = Carbon::now();
+
+        // --- User Stats ---
+        $totalUsers = User::count();
+
+        $newUsersThisMonth = User::whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
+
+        $activeUsers = UserGym::where('membership_end_at', '>=', $now->toDateString())
+            ->distinct('user_id')
+            ->count('user_id');
+
+        $inactiveUsers = max(0, $totalUsers - $activeUsers);
+
+        // --- Transaction Stats (this month) ---
+        $txBaseQuery = fn () => Transaction::whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year);
+
+        $totalTransactions    = $txBaseQuery()->count();
+        $paidTransactions     = $txBaseQuery()->where('status', 'success')->count();
+        $pendingTransactions  = $txBaseQuery()->where('status', 'pending')->count();
+        $failedTransactions   = $txBaseQuery()->where('status', 'failed')->count();
+
+        // --- Revenue Stats (this month, status = success) ---
+        $revenueBaseQuery = fn () => Transaction::whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->where('status', 'success');
+
+        $totalRevenue = $revenueBaseQuery()->sum('total_price');
+
+        // Bulanan = membership with duration_in_days <= 31
+        $bulananRevenue = $revenueBaseQuery()
+            ->where('transaction_type', 'membership')
+            ->whereHas('membership', fn ($q) => $q->where('duration_in_days', '<=', 31))
+            ->sum('total_price');
+
+        // Personal = PT packages (full or installment)
+        $personalRevenue = $revenueBaseQuery()
+            ->whereIn('transaction_type', ['full_pt', 'installment_pt'])
+            ->sum('total_price');
+
+        // Tahunan = membership with duration_in_days > 31
+        $tahunanRevenue = $revenueBaseQuery()
+            ->where('transaction_type', 'membership')
+            ->whereHas('membership', fn ($q) => $q->where('duration_in_days', '>', 31))
+            ->sum('total_price');
+
+        // --- 12-Month Chart Data ---
+        $chartRevenue    = [];
+        $chartNewMembers = [];
+        $chartMonths     = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $month = $now->copy()->subMonths($i);
+
+            $revenue = Transaction::whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->where('status', 'success')
+                ->sum('total_price');
+
+            $newMembers = User::whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->count();
+
+            $chartRevenue[]    = round($revenue / 1_000_000, 2); // in millions
+            $chartNewMembers[] = $newMembers;
+            $chartMonths[]     = $month->format('M Y');
+        }
+
+        // --- Recent Transactions (last 3) ---
+        $recentTransactions = Transaction::with(['user', 'membership', 'fullPt', 'installmentPt'])
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(function ($tx) {
+                if ($tx->transaction_type === 'membership') {
+                    $package = $tx->membership?->name ?? 'Membership';
+                } elseif ($tx->transaction_type === 'full_pt') {
+                    $package = $tx->fullPt?->name ?? 'Personal Training';
+                } else {
+                    $package = 'PT (Cicilan)';
+                }
+
+                return [
+                    'unique_id'   => $tx->unique_id,
+                    'member_name' => $tx->user?->name ?? 'Unknown',
+                    'package'     => $package,
+                    'amount'      => (float) $tx->total_price,
+                    'date'        => $tx->created_at->format('d M Y'),
+                    'status'      => $tx->status,
+                ];
+            });
+
+        return Inertia::render('Dashboard', [
+            'stats' => [
+                'total_users'         => $totalUsers,
+                'new_users'           => $newUsersThisMonth,
+                'active_users'        => $activeUsers,
+                'inactive_users'      => $inactiveUsers,
+                'total_transactions'  => $totalTransactions,
+                'paid_transactions'   => $paidTransactions,
+                'pending_transactions'=> $pendingTransactions,
+                'failed_transactions' => $failedTransactions,
+                'total_revenue'       => (float) $totalRevenue,
+                'bulanan_revenue'     => (float) $bulananRevenue,
+                'personal_revenue'    => (float) $personalRevenue,
+                'tahunan_revenue'     => (float) $tahunanRevenue,
+            ],
+            'chart_data' => [
+                'months'      => $chartMonths,
+                'revenue'     => $chartRevenue,
+                'new_members' => $chartNewMembers,
+            ],
+            'recent_transactions' => $recentTransactions,
+        ]);
+    }
+}
