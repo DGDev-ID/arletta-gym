@@ -14,6 +14,9 @@ class UserDetail extends Model
         'gender',
         'address',
         'phone_number',
+        'emergency_name',
+        'emergency_phone',
+        'emergency_relation',
     ];
 
     // Relations

@@ -5,14 +5,20 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HealthPolicyResponse;
 use App\Models\User;
+use App\Models\UserGym;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
+use App\Models\Booking;
+use App\Models\ClassSchedule;
+use App\Models\UserPtPackageMember;
+use App\Models\UserPtPackageDetail;
 
 #[OA\Tag(name: 'Auth', description: 'Authentication endpoints')]
 class AuthController extends Controller
@@ -31,6 +37,9 @@ class AuthController extends Controller
                     new OA\Property(property: 'password', type: 'string', example: 'password123'),
                     new OA\Property(property: 'password_confirmation', type: 'string', example: 'password123'),
                     new OA\Property(property: 'phone_number', type: 'string', example: '081234567890'),
+                    new OA\Property(property: 'emergency_name', type: 'string', example: 'Nama Kontak Darurat'),
+                    new OA\Property(property: 'emergency_phone', type: 'string', example: '081234567890'),
+                    new OA\Property(property: 'emergency_relation', type: 'string', example: 'Orang tua'),
                     new OA\Property(property: 'health_policy', type: 'object', properties: [
                         new OA\Property(property: 'answers', type: 'array', items: new OA\Items(
                             properties: [
@@ -68,6 +77,15 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)],
             'phone_number' => 'nullable|string|max:20',
+            'nik' => 'nullable|string',
+            'birth_place' => 'nullable|string|max:255',
+            'birth_date' => 'nullable|date',
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+            'address' => 'nullable|string',
+            'emergency_name' => 'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:20',
+            'emergency_relation' => 'nullable|string|max:100',
+            'master_gym_id' => 'nullable|integer|exists:master_gyms,id',
             'health_policy' => 'nullable|array',
             'health_policy.answers' => 'nullable|array',
             'health_policy.agreed_health_accuracy' => 'nullable|boolean',
@@ -84,11 +102,15 @@ class AuthController extends Controller
 
             $user->assignRole('User');
 
-            // Create user detail if phone_number provided
-            if (!empty($validated['phone_number'])) {
-                $user->userDetail()->create([
-                    'phone_number' => $validated['phone_number'],
-                ]);
+            // Create user detail if any detail provided
+            $detailFields = ['phone_number', 'nik', 'birth_place', 'birth_date', 'gender', 'address', 'emergency_name', 'emergency_phone', 'emergency_relation'];
+            $detailData = array_filter(
+                array_intersect_key($validated, array_flip($detailFields)),
+                fn($v) => $v !== null
+            );
+
+            if (!empty($detailData)) {
+                $user->userDetail()->create($detailData);
             }
 
             // Store health policy response
@@ -100,6 +122,15 @@ class AuthController extends Controller
                     'agreed_terms' => $validated['health_policy']['agreed_terms'] ?? false,
                     'agreed_risk' => $validated['health_policy']['agreed_risk'] ?? false,
                     'ip_address' => $request->ip(),
+                ]);
+            }
+
+            // Associate user with selected master gym (club)
+            if (!empty($validated['master_gym_id'])) {
+                UserGym::create([
+                    'user_id' => $user->id,
+                    'gym_id' => $validated['master_gym_id'],
+                    'membership_end_at' => null,
                 ]);
             }
 
@@ -215,12 +246,24 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user->load(['userDetail', 'roles']);
+        $user->load('userDetail', 'roles', 'gyms');
 
-        // Get membership info
-        $userGym = $user->userGyms()->with('gym')->first();
+        return response()->json([
+            'success' => true,
+            'data' => $user
+        ]);
+    }
+
+    // Role-specific: member profile for landing
+    public function memberMe(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('userDetail');
+
+        // Membership info (user_gyms)
+        $userGym = \App\Models\UserGym::where('user_id', $user->id)->with('gym')->latest()->first();
+
         $membershipInfo = null;
-
         if ($userGym) {
             $membershipInfo = [
                 'gym_name' => $userGym->gym->name ?? null,
@@ -229,18 +272,155 @@ class AuthController extends Controller
             ];
         }
 
+        // Upcoming classes / bookings
+        $bookings = Booking::where('user_id', $user->id)
+            ->whereHas('classSchedule', function ($q) {
+                $q->whereDate('date', '>=', now()->toDateString())->where('is_cancelled', false);
+            })
+            ->with(['classSchedule.gymClass', 'classSchedule.trainer'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($b) {
+                return [
+                    'id' => $b->id,
+                    'name' => $b->classSchedule->gymClass->name ?? null,
+                    'time' => $b->classSchedule->start_time ?? null,
+                    'trainer' => $b->classSchedule->trainer?->name ?? null,
+                    'date' => $b->classSchedule->date?->toDateString(),
+                    'status' => $b->status,
+                    'type' => 'class',
+                ];
+            });
+
+        $response = [
+            'member' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->userDetail?->phone_number,
+                'memberSince' => $user->created_at?->toDateString(),
+                'memberId' => $user->unique_id,
+                'avatar' => $user->userDetail?->avatar ?? null,
+            ],
+            'membership' => $membershipInfo,
+            'upcomingClasses' => $bookings,
+        ];
+
+        return response()->json(['success' => true, 'data' => $response]);
+    }
+
+    // Role-specific: trainer profile/dashboard for landing
+    public function trainerMe(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('userDetail');
+
+        // Today's schedule
+        $todaySchedules = ClassSchedule::where('trainer_id', $user->id)
+            ->whereDate('date', now()->toDateString())
+            ->where('is_cancelled', false)
+            ->with(['bookings.user'])
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'clientName' => $s->bookings->first()?->user?->name ?? null,
+                    'time' => $s->start_time . ' - ' . $s->end_time,
+                    'name' => $s->gymClass?->name ?? null,
+                    'status' => 'scheduled',
+                    'type' => 'pt-session',
+                    'date' => $s->date?->toDateString(),
+                    'location' => $s->location,
+                ];
+            });
+
+        // Clients and stats
+        $clientIds = UserPtPackageMember::whereHas('userPtPackage', function ($q) use ($user) {
+            $q->where('pt_id', $user->id);
+        })->pluck('user_id')->unique();
+
+        $recentClients = \App\Models\User::whereIn('id', $clientIds->take(10))->get()->map(function ($c) {
+            return [
+                'name' => $c->name,
+                'sessions' => null,
+                'progress' => null,
+                'avatar' => $c->userDetail?->avatar ?? null,
+            ];
+        });
+
+        $totalClients = $clientIds->count();
+
+        $completedSessions = UserPtPackageDetail::whereHas('userPtPackage', function ($q) use ($user) {
+            $q->where('pt_id', $user->id);
+        })->sum('consumed_sessions');
+
+        $response = [
+            'trainer' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->userDetail?->phone_number,
+                'joinedAt' => $user->created_at?->toDateString(),
+                'specialty' => $user->userDetail?->specialty ?? null,
+                'avatar' => $user->userDetail?->avatar ?? null,
+                'rating' => null,
+                'totalClients' => $totalClients,
+                'completedSessions' => $completedSessions,
+                'memberId' => $user->unique_id,
+            ],
+            'todaySchedule' => $todaySchedules,
+            'recentClients' => $recentClients,
+        ];
+
+        return response()->json(['success' => true, 'data' => $response]);
+    }
+
+    #[OA\Post(
+        path: '/api/auth/emergency-contact',
+        tags: ['Auth'],
+        summary: 'Update emergency contact for authenticated user',
+        security: [['sanctum' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['emergency_name', 'emergency_phone', 'emergency_relation'],
+                properties: [
+                    new OA\Property(property: 'emergency_name', type: 'string'),
+                    new OA\Property(property: 'emergency_phone', type: 'string'),
+                    new OA\Property(property: 'emergency_relation', type: 'string'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Emergency contact updated'),
+        ]
+    )]
+    public function updateEmergencyContact(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'emergency_name' => 'required|string|max:255',
+            'emergency_phone' => 'required|string|max:20',
+            'emergency_relation' => 'required|string|max:100',
+        ]);
+
+        $user->userDetail()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'emergency_name' => $validated['emergency_name'],
+                'emergency_phone' => $validated['emergency_phone'],
+                'emergency_relation' => $validated['emergency_relation'],
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'data' => [
-                ...$this->formatUser($user),
-                'membership' => $membershipInfo,
-                'qr_data' => [
-                    'member_id' => $user->unique_id,
-                    'name' => $user->name,
-                    'start_date' => $userGym?->created_at?->toDateString(),
-                    'duration' => $userGym ? now()->diffInDays($userGym->membership_end_at) . ' hari' : null,
-                ],
+                'emergency_name' => $validated['emergency_name'],
+                'emergency_phone' => $validated['emergency_phone'],
+                'emergency_relation' => $validated['emergency_relation'],
             ],
+            'message' => 'Emergency contact updated successfully',
         ]);
     }
 
@@ -345,6 +525,9 @@ class AuthController extends Controller
             'birth_place' => $user->userDetail?->birth_place,
             'birth_date' => $user->userDetail?->birth_date,
             'gender' => $user->userDetail?->gender,
+            'emergency_name' => $user->userDetail?->emergency_name,
+            'emergency_phone' => $user->userDetail?->emergency_phone,
+            'emergency_relation' => $user->userDetail?->emergency_relation,
             'address' => $user->userDetail?->address,
             'created_at' => $user->created_at,
         ];

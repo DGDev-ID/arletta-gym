@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\TrainerApiController;
+use App\Http\Controllers\Api\GymController;
 use App\Http\Controllers\Api\WaitlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,7 @@ Route::prefix('auth')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/emergency-contact', [AuthController::class, 'updateEmergencyContact']);
         Route::get('/me', [AuthController::class, 'me']);
     });
 });
@@ -34,6 +36,9 @@ Route::prefix('auth')->group(function () {
 // ── Public (no auth) ──────────────────────────────────────────
 Route::get('/memberships', [MembershipApiController::class, 'index']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
+
+// Master gyms for landing select
+Route::get('/gyms', [GymController::class, 'index']);
 
 // ⚠️  Literal routes BEFORE wildcard {id} to avoid route conflicts
 Route::get('/trainers', [TrainerApiController::class, 'index']);
@@ -48,6 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::put('/users/me', [ProfileController::class, 'update']);
     Route::post('/uploads', [ProfileController::class, 'upload']);
+        // Role-specific profile endpoints for landing
+        Route::get('/members/me', [AuthController::class, 'memberMe']);
+        Route::get('/trainers/me', [AuthController::class, 'trainerMe']);
 
     // Bookings
     Route::get('/bookings', [BookingController::class, 'index']);

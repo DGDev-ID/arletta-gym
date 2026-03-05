@@ -28,6 +28,9 @@ class ProfileController extends Controller
                     new OA\Property(property: 'birth_date', type: 'string', format: 'date'),
                     new OA\Property(property: 'gender', type: 'string', enum: ['male', 'female']),
                     new OA\Property(property: 'address', type: 'string'),
+                    new OA\Property(property: 'emergency_name', type: 'string'),
+                    new OA\Property(property: 'emergency_phone', type: 'string'),
+                    new OA\Property(property: 'emergency_relation', type: 'string'),
                 ]
             )
         ),
@@ -48,6 +51,9 @@ class ProfileController extends Controller
             'birth_date' => 'nullable|date',
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'address' => 'nullable|string',
+            'emergency_name' => 'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:20',
+            'emergency_relation' => 'nullable|string|max:100',
         ]);
 
         // Update user name
@@ -60,7 +66,7 @@ class ProfileController extends Controller
         $user->save();
 
         // Update or create user detail
-        $detailFields = ['phone_number', 'nik', 'birth_place', 'birth_date', 'gender', 'address'];
+        $detailFields = ['phone_number', 'nik', 'birth_place', 'birth_date', 'gender', 'address', 'emergency_name', 'emergency_phone', 'emergency_relation'];
         $detailData = array_filter(
             array_intersect_key($validated, array_flip($detailFields)),
             fn($v) => $v !== null
