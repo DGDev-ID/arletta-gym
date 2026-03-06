@@ -19,6 +19,7 @@ return [
     'allowed_origins' => [
         env('LANDING_URL', 'http://localhost:5173'),  // Vite dev server
         env('APP_URL', 'http://localhost:8000'),
+        'https://gym.arlettaluxury.com',
     ],
 
     'allowed_origins_patterns' => [],
