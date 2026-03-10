@@ -106,6 +106,12 @@ class ManageUserController extends Controller
         $user->load('userDetail');
 
         $gyms = MasterGym::all();
+        if (Auth::user()->hasRole('Admin')) {
+            $gyms = MasterGym::join('gym_admins', 'master_gyms.id', '=', 'gym_admins.gym_id')
+                ->where('gym_admins.admin_id', Auth::id())
+                ->select('master_gyms.id', 'master_gyms.name')
+                ->get();
+        }
 
         $pendingTransactions = Transaction::where('user_id', $user->id)
             ->where('status', 'pending')

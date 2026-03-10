@@ -17,6 +17,7 @@ class HistoryTransactionController extends Controller
             'transaction' => $transaction
         ]);
     }
+    
     public function update(Request $request, $id) {
         $request->validate([
             'status' => 'required|in:success,failed',
