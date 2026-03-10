@@ -120,7 +120,7 @@ defineProps<{
         <div class="flex-1 flex items-center justify-center px-6 py-12 bg-white dark:bg-gray-900">
             <div class="w-full max-w-[420px]">
                 <div class="lg:hidden mb-10 text-center">
-                    <img src="/images/logo/logo-gym.svg" alt="Arletta Gym" class="w-14 h-14 mx-auto mb-3" />
+                    <img src="/logo-gym.svg" alt="Arletta Gym" class="w-14 h-14 mx-auto mb-3" />
                     <h1 class="text-xl font-bold text-gray-800 dark:text-white/90">Arletta Gym</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Sistem Manajemen Gym</p>
                 </div>
