@@ -24,6 +24,7 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+        roles: ["Super Admin", "Admin"]
     },
 ];
 
@@ -32,26 +33,31 @@ const masterDataNavItems: NavItem[] = [
         title: "Gym",
         href: master.gym.index(),
         icon: Dumbbell,
+        roles: ["Super Admin"]
     },
     {
         title: "Membership",
         href: master.membership.index(),
         icon: CreditCard, 
+        roles: ["Super Admin"]
     },
     {
         title: "Personal Trainer Package",
         href: master.personalTrainerPackage.index(),
         icon: Package, 
+        roles: ["Super Admin"]
     },
     {
         title: "Gym Class",
         href: '/master/gym-class',
         icon: BookOpen,
+        roles: ["Super Admin"]
     },
     {
         title: "Class Schedule",
         href: '/master/class-schedule',
         icon: CalendarDays,
+        roles: ["Super Admin"]
     },
 ];
 
@@ -60,16 +66,19 @@ const managementNavItems: NavItem[] = [
         title: "User",
         href: management.user.index(),
         icon: Users, 
+        roles: ["Super Admin", "Admin"]
     },
     {
         title: "Admin",
         href: management.admin.index(),
         icon: ShieldCheck,
+        roles: ["Super Admin"]
     },
     {
         title: "Personal Trainer",
         href: management.personalTrainer.index(),
         icon: UserCog, 
+        roles: ["Super Admin", "Admin"]
     },
 ];
 
@@ -78,6 +87,7 @@ const transactionNavItems: NavItem[] = [
         title: "History Transaction",
         href: transaction.history.index(),
         icon: History, 
+        roles: ["Super Admin", "Admin"]
     },
 ];
 
@@ -86,6 +96,7 @@ const scanNavItems: NavItem[] = [
         title: "Scan QR Code",
         href: '/scan-qr',
         icon: ScanLine,
+        roles: ["Super Admin", "Admin"]
     },
 ];
 </script>

@@ -26,12 +26,14 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::prefix('master')->name('master.')->group(function () {
-        Route::resource('gym', MasterGymController::class);
-        Route::resource('membership', MasterMembershipController::class);
-        Route::resource('personal-trainer-package', MasterPtPackageController::class);
-        Route::resource('gym-class', MasterGymClassController::class);
-        Route::resource('class-schedule', MasterClassScheduleController::class);
+    Route::middleware(['role:Super Admin'])->group(function () {
+        Route::prefix('master')->name('master.')->group(function () {
+            Route::resource('gym', MasterGymController::class);
+            Route::resource('membership', MasterMembershipController::class);
+            Route::resource('personal-trainer-package', MasterPtPackageController::class);
+            Route::resource('gym-class', MasterGymClassController::class);
+            Route::resource('class-schedule', MasterClassScheduleController::class);
+        });
     });
 
     Route::prefix('management')->name('management.')->group(function () {
@@ -48,7 +50,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('personal-trainer', ManagePersonalTrainerController::class);
     });
 
-    Route::prefix('transaction')->name('transaction.')->group(function() {
+    Route::prefix('transaction')->name('transaction.')->group(function () {
         Route::resource('history', HistoryTransactionController::class);
     });
 

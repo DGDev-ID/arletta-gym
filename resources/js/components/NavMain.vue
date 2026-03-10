@@ -1,35 +1,59 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
 import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { useCurrentUrl } from '@/composables/useCurrentUrl';
-import { type NavItem } from '@/types';
+} from '@/components/ui/sidebar'
+import { useCurrentUrl } from '@/composables/useCurrentUrl'
+import { type NavItem } from '@/types'
 
-defineProps<{
-    items: NavItem[];
-    title: string;
-}>();
+const props = defineProps<{
+    items: NavItem[]
+    title: string
+}>()
 
-const { isCurrentUrl } = useCurrentUrl();
+const { isCurrentUrl } = useCurrentUrl()
+
+const page = usePage()
+
+const userRoles = computed(() => {
+    return (page.props.auth?.roles ?? []) as string[]
+})
+
+const visibleItems = computed(() => {
+    return props.items.filter(item => {
+
+        if (!item.roles || item.roles.length === 0) {
+            return true
+        }
+
+        return item.roles.some(role =>
+            userRoles.value.includes(role)
+        )
+    })
+})
 </script>
 
 <template>
-    <SidebarGroup class="px-2 py-0">
+    <SidebarGroup v-if="visibleItems.length" class="px-2 py-0">
         <SidebarGroupLabel>{{ title }}</SidebarGroupLabel>
+
         <SidebarMenu>
-            <SidebarMenuItem v-for="item in items" :key="item.title">
+            <SidebarMenuItem
+                v-for="item in visibleItems"
+                :key="item.title"
+            >
                 <SidebarMenuButton
                     as-child
                     :is-active="isCurrentUrl(item.href)"
                     :tooltip="item.title"
                 >
                     <Link :href="item.href">
-                        <component :is="item.icon" />
+                        <component v-if="item.icon" :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>
                 </SidebarMenuButton>
