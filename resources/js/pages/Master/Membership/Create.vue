@@ -2,6 +2,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
+import Textarea from "@/components/ui/textarea/Textarea.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 
@@ -17,6 +18,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 const form = useForm({
     gym_id: '',
     name: '',
+    description: '',
     duration_in_days: '',
     price: '',
     promos: [
@@ -72,6 +74,12 @@ const submit = () => {
                                 <label class="text-sm font-medium">Harga (IDR)</label>
                                 <Input v-model="form.price" type="number" placeholder="500000" />
                             </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Deskripsi (Opsional)</label>
+                            <Textarea v-model="form.description" rows="3" placeholder="Deskripsi paket membership..." />
+                            <p v-if="form.errors.description" class="text-xs text-destructive">{{ form.errors.description }}</p>
                         </div>
 
                         <div class="space-y-2">

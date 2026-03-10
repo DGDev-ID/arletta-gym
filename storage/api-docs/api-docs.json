@@ -56,6 +56,18 @@
                                         "type": "string",
                                         "example": "081234567890"
                                     },
+                                    "emergency_name": {
+                                        "type": "string",
+                                        "example": "Nama Kontak Darurat"
+                                    },
+                                    "emergency_phone": {
+                                        "type": "string",
+                                        "example": "081234567890"
+                                    },
+                                    "emergency_relation": {
+                                        "type": "string",
+                                        "example": "Orang tua"
+                                    },
                                     "health_policy": {
                                         "properties": {
                                             "answers": {
@@ -245,6 +257,121 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/members/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get member-specific dashboard/profile for landing",
+                "operationId": "1f1c9aa064d8b3ef6622c50fca068819",
+                "responses": {
+                    "200": {
+                        "description": "Member profile retrieved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/trainers/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get trainer-specific dashboard/profile for landing",
+                "operationId": "cb9fb64c6b2f6550a79672e1f5a35d56",
+                "responses": {
+                    "200": {
+                        "description": "Trainer profile retrieved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/emergency-contact": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Update emergency contact for authenticated user",
+                "operationId": "a32163fc3adbdf8f1b1dff7abb34bd8a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "emergency_name",
+                                    "emergency_phone",
+                                    "emergency_relation"
+                                ],
+                                "properties": {
+                                    "emergency_name": {
+                                        "type": "string"
+                                    },
+                                    "emergency_phone": {
+                                        "type": "string"
+                                    },
+                                    "emergency_relation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Emergency contact updated"
                     }
                 },
                 "security": [
@@ -522,6 +649,20 @@
                 ]
             }
         },
+        "/api/gyms": {
+            "get": {
+                "tags": [
+                    "Gyms"
+                ],
+                "summary": "List master gyms",
+                "operationId": "9a18b914294494164e8dce2fff330401",
+                "responses": {
+                    "200": {
+                        "description": "Gyms retrieved"
+                    }
+                }
+            }
+        },
         "/api/memberships": {
             "get": {
                 "tags": [
@@ -751,6 +892,15 @@
                                         ]
                                     },
                                     "address": {
+                                        "type": "string"
+                                    },
+                                    "emergency_name": {
+                                        "type": "string"
+                                    },
+                                    "emergency_phone": {
+                                        "type": "string"
+                                    },
+                                    "emergency_relation": {
                                         "type": "string"
                                     }
                                 },
@@ -1249,6 +1399,10 @@
         {
             "name": "Bookings",
             "description": "Booking endpoints"
+        },
+        {
+            "name": "Gyms",
+            "description": "Master gym endpoints"
         },
         {
             "name": "Memberships",

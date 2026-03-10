@@ -25,7 +25,7 @@ class MembershipApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = MasterMembership::with(['gym:id,name', 'membershipPromos' => function ($q) {
-            $q->whereNull('unique_code'); // only global (non-code) promos
+            $q->whereNotNull('unique_code'); // only global (non-code) promos
         }]);
 
         if ($request->filled('gym_id')) {
@@ -34,6 +34,7 @@ class MembershipApiController extends Controller
 
         $memberships = $query->latest()->get()->map(function ($m) {
             $activePromos = $m->membershipPromos->map(fn($p) => [
+                'unique_code' => $p->unique_code,
                 'type' => $p->type,
                 'value' => $p->value,
             ]);

@@ -9,6 +9,7 @@ class MasterMembership extends Model
     protected $fillable = [
         'gym_id',
         'name',
+        'description',
         'duration_in_days',
         'price'
     ];

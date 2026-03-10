@@ -32,6 +32,7 @@ class MasterMembershipController extends Controller
             'name' => 'required|string|max:255',
             'duration_in_days' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             // Validasi array promo
             'promos' => 'nullable|array',
             'promos.*.unique_code' => 'nullable|unique:membership_promos,unique_code',
@@ -42,6 +43,7 @@ class MasterMembershipController extends Controller
         $membership = MasterMembership::create([
             'gym_id' => $validated['gym_id'],
             'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
             'duration_in_days' => $validated['duration_in_days'],
             'price' => $validated['price'],
         ]);
@@ -71,6 +73,7 @@ class MasterMembershipController extends Controller
             'name' => 'required|string|max:255',
             'duration_in_days' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             'promos' => 'nullable|array',
             'promos.*.unique_code' => 'nullable|unique:membership_promos,unique_code',
             'promos.*.type' => 'required|in:discount_percent,discount_amount,bonus_days',
@@ -80,6 +83,7 @@ class MasterMembershipController extends Controller
         $membership->update([
             'gym_id' => $validated['gym_id'],
             'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
             'duration_in_days' => $validated['duration_in_days'],
             'price' => $validated['price'],
         ]);

@@ -255,6 +255,22 @@ class AuthController extends Controller
     }
 
     // Role-specific: member profile for landing
+    #[OA\Get(
+        path: '/api/members/me',
+        tags: ['Auth'],
+        summary: 'Get member-specific dashboard/profile for landing',
+        security: [['sanctum' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Member profile retrieved',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                        new OA\Property(property: 'data', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function memberMe(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -309,6 +325,22 @@ class AuthController extends Controller
     }
 
     // Role-specific: trainer profile/dashboard for landing
+    #[OA\Get(
+        path: '/api/trainers/me',
+        tags: ['Auth'],
+        summary: 'Get trainer-specific dashboard/profile for landing',
+        security: [['sanctum' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Trainer profile retrieved',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                        new OA\Property(property: 'data', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function trainerMe(Request $request): JsonResponse
     {
         $user = $request->user();

@@ -51,6 +51,7 @@ const formatCurrency = (value: number) => {
                             <tr>
                                 <th class="px-6 py-4">Gym</th>
                                 <th class="px-6 py-4">Nama Paket</th>
+                                <th class="px-6 py-4">Deskripsi</th>
                                 <th class="px-6 py-4">Durasi</th>
                                 <th class="px-6 py-4">Harga</th>
                                 <th class="px-6 py-4">Promo Aktif</th>
@@ -61,6 +62,7 @@ const formatCurrency = (value: number) => {
                             <tr v-for="item in memberships" :key="item.id" class="hover:bg-muted/20 transition-colors">
                                 <td class="px-6 py-4 font-medium">{{ item.gym?.name }}</td>
                                 <td class="px-6 py-4">{{ item.name }}</td>
+                                <td class="px-6 py-4">{{ item.description || '-' }}</td>
                                 <td class="px-6 py-4">{{ item.duration_in_days }} Hari</td>
                                 <td class="px-6 py-4">{{ formatCurrency(item.price) }}</td>
                                 <td class="px-6 py-4">
