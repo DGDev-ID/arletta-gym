@@ -36,26 +36,33 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    Route::prefix('management')->name('management.')->group(function () {
-        Route::resource('admin', ManageAdminController::class);
+    Route::middleware(['role:Super Admin|Admin'])->group(function () {
+        Route::prefix('master')->name('master.')->group(function () {
+            Route::resource('gym-class', MasterGymClassController::class);
+            Route::resource('class-schedule', MasterClassScheduleController::class);
+        });
 
-        Route::resource('user', ManageUserController::class);
-        Route::get('user/gym-details/{gym}', [ManageUserController::class, 'getGymDetails']);
-        Route::post('user/check-promo', [ManageUserController::class, 'checkPromoCode']);
-        Route::post('user/generate-payment', [ManageUserController::class, 'generatePayment'])->name('user.generate-payment');
-        Route::post('user/generate-installment', [ManageUserController::class, 'generateInstallment'])->name('user.generate-installment');
-        Route::post('/user/transactions/{transaction}/manual-action', [ManageUserController::class, 'approveOrRejectManualPayment'])
-            ->name('management.user.transactions.manual-action');
+        Route::prefix('management')->name('management.')->group(function () {
+            Route::resource('admin', ManageAdminController::class);
 
-        Route::resource('personal-trainer', ManagePersonalTrainerController::class);
+            Route::resource('user', ManageUserController::class);
+            Route::get('user/gym-details/{gym}', [ManageUserController::class, 'getGymDetails']);
+            Route::post('user/check-promo', [ManageUserController::class, 'checkPromoCode']);
+            Route::post('user/generate-payment', [ManageUserController::class, 'generatePayment'])->name('user.generate-payment');
+            Route::post('user/generate-installment', [ManageUserController::class, 'generateInstallment'])->name('user.generate-installment');
+            Route::post('/user/transactions/{transaction}/manual-action', [ManageUserController::class, 'approveOrRejectManualPayment'])
+                ->name('management.user.transactions.manual-action');
+
+            Route::resource('personal-trainer', ManagePersonalTrainerController::class);
+        });
+
+        Route::prefix('transaction')->name('transaction.')->group(function () {
+            Route::resource('history', HistoryTransactionController::class);
+        });
+
+        Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');
+        Route::post('scan-qr', [ScanQRCodeController::class, 'scan'])->name('scan-qr.scan');
     });
-
-    Route::prefix('transaction')->name('transaction.')->group(function () {
-        Route::resource('history', HistoryTransactionController::class);
-    });
-
-    Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');
-    Route::post('scan-qr', [ScanQRCodeController::class, 'scan'])->name('scan-qr.scan');
 });
 
 require __DIR__ . '/settings.php';

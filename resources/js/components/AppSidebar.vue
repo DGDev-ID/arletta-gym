@@ -51,13 +51,13 @@ const masterDataNavItems: NavItem[] = [
         title: "Gym Class",
         href: '/master/gym-class',
         icon: BookOpen,
-        roles: ["Super Admin"]
+        roles: ["Super Admin", "Admin"]
     },
     {
         title: "Class Schedule",
         href: '/master/class-schedule',
         icon: CalendarDays,
-        roles: ["Super Admin"]
+        roles: ["Super Admin", "Admin"]
     },
 ];
 
