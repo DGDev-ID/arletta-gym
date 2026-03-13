@@ -8,9 +8,12 @@ use App\Http\Controllers\Master\MasterClassScheduleController;
 use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
+use App\Http\Controllers\Master\MasterProductController;
 use App\Http\Controllers\Master\MasterPtPackageController;
 use App\Http\Controllers\ScanQRCodeController;
 use App\Http\Controllers\Transaction\HistoryTransactionController;
+use App\Http\Controllers\Transaction\TransactionPerSessionController;
+use App\Http\Controllers\Transaction\TransactionPosController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -33,6 +36,8 @@ Route::middleware(['auth'])->group(function () {
             Route::resource('personal-trainer-package', MasterPtPackageController::class);
             Route::resource('gym-class', MasterGymClassController::class);
             Route::resource('class-schedule', MasterClassScheduleController::class);
+                Route::resource('product', MasterProductController::class);
+                Route::post('product/{product}/add-stock', [MasterProductController::class, 'addStock'])->name('product.add-stock');
         });
     });
 
@@ -58,6 +63,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::prefix('transaction')->name('transaction.')->group(function () {
             Route::resource('history', HistoryTransactionController::class);
+            Route::resource('transaction-per-session', TransactionPerSessionController::class);
+            Route::get('pos', [TransactionPosController::class, 'index'])->name('pos.index');
+            Route::post('pos', [TransactionPosController::class, 'store'])->name('pos.store');
+            Route::post('pos/{transactionProductOut}/make-success', [TransactionPosController::class, 'makeSuccess'])->name('pos.make-success');
+            Route::post('pos/{transactionProductOut}/make-failed', [TransactionPosController::class, 'makeFailed'])->name('pos.make-failed');
         });
 
         Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');

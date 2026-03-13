@@ -59,6 +59,12 @@ const masterDataNavItems: NavItem[] = [
         icon: CalendarDays,
         roles: ["Super Admin", "Admin"]
     },
+    {
+        title: "Product",
+        href: '/master/product',
+        icon: Package,
+        roles: ["Super Admin", "Admin"]
+    },
 ];
 
 const managementNavItems: NavItem[] = [
@@ -87,6 +93,18 @@ const transactionNavItems: NavItem[] = [
         title: "History Transaction",
         href: transaction.history.index(),
         icon: History, 
+        roles: ["Super Admin", "Admin"]
+    },
+    {
+        title: "Transaction Per Session",
+        href: transaction.transactionPerSession.index(),
+        icon: CreditCard,
+        roles: ["Super Admin", "Admin"]
+    },
+    {
+        title: "Kasir Pembayaran",
+        href: '/transaction/pos',
+        icon: CreditCard,
         roles: ["Super Admin", "Admin"]
     },
 ];

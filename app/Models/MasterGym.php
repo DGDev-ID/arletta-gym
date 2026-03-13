@@ -12,6 +12,11 @@ class MasterGym extends Model
         'address_coordinate',
         'description',
         'start_access',
+        'price_per_session',
+    ];
+
+    protected $casts = [
+        'price_per_session' => 'decimal:2',
     ];
 
     // Relations
@@ -53,5 +58,10 @@ class MasterGym extends Model
     public function gymUsers()
     {
         return $this->belongsToMany(UserGym::class, 'gym_id', 'user_id');
+    }
+
+    public function perSessionTransactions()
+    {
+        return $this->hasMany(TransactionPerSession::class, 'gym_id');
     }
 }

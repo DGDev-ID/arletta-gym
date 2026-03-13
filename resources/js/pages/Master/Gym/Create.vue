@@ -39,6 +39,7 @@ const form = useForm({
     address_coordinate: '',
     description: '',
     start_access: '',
+    price_per_session: '',
     admin_ids: [] as number[],
     personal_trainer_ids: [] as number[],
 });
@@ -92,6 +93,12 @@ const submit = () => {
                                 <Input v-model="form.start_access" type="date"
                                     :aria-invalid="!!form.errors.start_access" />
                             </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Price per Session (IDR)</label>
+                            <Input v-model="form.price_per_session" type="number" step="0.01" />
+                            <p v-if="form.errors.price_per_session" class="text-sm text-destructive">{{ form.errors.price_per_session }}</p>
                         </div>
 
                         <!-- Deskripsi -->

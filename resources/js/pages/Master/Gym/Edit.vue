@@ -46,6 +46,7 @@ const form = useForm({
     address_coordinate: props.gym.address_coordinate ?? '',
     description: props.gym.description ?? '',
     start_access: props.gym.start_access,
+    price_per_session: props.gym.price_per_session ?? '',
     admin_ids: props.gym.admins?.map((admin) => admin.id) || [],
     personal_trainer_ids: props.gym.personal_trainers?.map((trainer) => trainer.id) || [],
     images: [] as File[],
@@ -106,6 +107,12 @@ const submit = () => {
                                 <Input v-model="form.start_access" type="date"
                                     :aria-invalid="!!form.errors.start_access" />
                             </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Price per Session (IDR)</label>
+                            <Input v-model="form.price_per_session" type="number" step="0.01" />
+                            <p v-if="form.errors.price_per_session" class="text-sm text-destructive">{{ form.errors.price_per_session }}</p>
                         </div>
 
                         <div class="space-y-2">
