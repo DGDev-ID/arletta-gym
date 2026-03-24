@@ -11,6 +11,8 @@ class GymClass extends Model
         'name',
         'description',
         'category',
+        'level',
+        'benefits',
         'default_capacity',
         'duration_minutes',
         'image_url',
@@ -21,6 +23,7 @@ class GymClass extends Model
     {
         return [
             'is_active' => 'boolean',
+            'benefits' => 'array',
         ];
     }
 

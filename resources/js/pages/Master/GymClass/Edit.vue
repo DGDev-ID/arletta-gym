@@ -15,11 +15,18 @@ const breadcrumbItems: BreadcrumbItem[] = [
     { title: 'Edit', href: `/master/gym-class/${props.gymClass.id}/edit` },
 ];
 
+// Convert benefits array back to textarea string for editing
+const benefitsText = Array.isArray(props.gymClass.benefits)
+    ? props.gymClass.benefits.join('\n')
+    : (props.gymClass.benefits ?? '')
+
 const form = useForm({
     gym_id: props.gymClass.gym_id,
     name: props.gymClass.name,
     description: props.gymClass.description ?? '',
     category: props.gymClass.category ?? '',
+    level: props.gymClass.level ?? '',
+    benefits: benefitsText,
     default_capacity: props.gymClass.default_capacity,
     duration_minutes: props.gymClass.duration_minutes,
     image_url: null as File | null,
@@ -76,6 +83,32 @@ const submit = () => {
                                 <label class="text-sm font-medium">Kategori</label>
                                 <Input v-model="form.category" />
                             </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Level</label>
+                                <select v-model="form.level"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+                                    <option value="">Pilih level (opsional)</option>
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="All Levels">All Levels</option>
+                                </select>
+                                <p v-if="form.errors.level" class="text-xs text-destructive">{{ form.errors.level }}</p>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Manfaat / Benefits</label>
+                                <textarea v-model="form.benefits" rows="4"
+                                    placeholder="Satu manfaat per baris..."
+                                    class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" />
+                                <p class="text-xs text-muted-foreground">Satu manfaat per baris.</p>
+                                <p v-if="form.errors.benefits" class="text-xs text-destructive">{{ form.errors.benefits }}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Kapasitas Default</label>
                                 <Input v-model="form.default_capacity" type="number" />

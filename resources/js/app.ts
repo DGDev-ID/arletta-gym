@@ -4,6 +4,7 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import '../css/app.css';
 import { initializeTheme } from './composables/useAppearance';
+import { queryParams, applyUrlDefaults } from './wayfinder';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -26,3 +27,8 @@ createInertiaApp({
 
 // This will set light / dark mode on page load...
 initializeTheme();
+
+// Expose helper functions globally as a fallback for modules
+// that might reference them before module imports are resolved.
+(globalThis as any).queryParams = queryParams;
+(globalThis as any).applyUrlDefaults = applyUrlDefaults;

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\PtDescription;
+use App\Models\MasterGym;
 
 class ManagePersonalTrainerController extends Controller
 {
@@ -15,6 +17,49 @@ class ManagePersonalTrainerController extends Controller
         return Inertia::render('Management/PersonalTrainer/Index', [
             'personal_trainers' => $query->latest()->paginate(10)->withQueryString(),
         ]);
+    }
+
+    public function edit(User $personalTrainer)
+    {
+        $personalTrainer->load('gymPts.gym', 'ptDescriptions');
+
+        $assignedGyms = $personalTrainer->gymPts->map(function ($gp) {
+            return [
+                'id' => $gp->gym->id,
+                'name' => $gp->gym->name,
+            ];
+        })->toArray();
+
+        $allGyms = MasterGym::select('id', 'name')->get()->toArray();
+
+        $description = $personalTrainer->ptDescriptions->first()->description ?? null;
+
+        return Inertia::render('Management/PersonalTrainer/Edit', [
+            'personal_trainer' => [
+                'id' => $personalTrainer->id,
+                'name' => $personalTrainer->name,
+                'description' => $description,
+                'gyms' => $assignedGyms,
+            ],
+            'gyms' => $allGyms,
+        ]);
+    }
+
+    public function update(Request $request, User $personalTrainer)
+    {
+        $validated = $request->validate([
+            'gym_id' => 'required|exists:master_gyms,id',
+            'description' => 'nullable|string',
+        ]);
+
+        PtDescription::updateOrCreate([
+            'pt_id' => $personalTrainer->id,
+            'gym_id' => $validated['gym_id'],
+        ], [
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Deskripsi Personal Trainer berhasil disimpan.');
     }
 
     public function show(Request $request)

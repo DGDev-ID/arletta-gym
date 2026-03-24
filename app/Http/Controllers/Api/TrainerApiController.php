@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\MasterPtPackage;
 use App\Models\User;
 use App\Models\UserPtPackageMember;
+use App\Models\PtDescription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -286,5 +287,28 @@ class TrainerApiController extends Controller
             'data' => $schedules,
             'message' => 'Trainer schedules retrieved successfully',
         ]);
+    }
+
+    public function updateDescription(Request $request, int $id): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (!$authUser || !$authUser->hasRole(['Super Admin', 'Admin'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'gym_id' => 'required|exists:master_gyms,id',
+            'description' => 'nullable|string',
+        ]);
+
+        PtDescription::updateOrCreate([
+            'pt_id' => $id,
+            'gym_id' => $validated['gym_id'],
+        ], [
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Description updated successfully']);
     }
 }

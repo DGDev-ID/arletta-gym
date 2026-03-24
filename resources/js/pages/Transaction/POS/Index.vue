@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
-    { title: 'POS', href: '/transaction/pos' },
+    { title: 'Kasir Pembayaran', href: '/transaction/pos' },
 ];
 
 const selectedGym = ref(props.selectedGymId ?? (props.gyms && props.gyms[0] ? props.gyms[0].id : null));
@@ -69,13 +69,13 @@ const makeFailed = (id: number) => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="POS" />
+        <Head title="Kasir Pembayaran" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
-                    <Heading variant="small" title="POS" description="Mini Point of Sale" />
+                    <Heading variant="small" title="Kasir Pembayaran" description="Menu Pembayaran Produk" />
                 </div>
 
                 <div class="grid md:grid-cols-3 gap-6">

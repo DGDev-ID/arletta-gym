@@ -2,12 +2,12 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { debounce } from 'lodash'; // Pastikan lodash terinstall atau gunakan timeout manual
+import { Trash2 } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import Input from "@/components/ui/input/Input.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Trash2 } from 'lucide-vue-next';
 
 interface User {
     id: number;
@@ -149,6 +149,10 @@ const revokePersonalTrainer = (id: number) => {
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
+                                    <a :href="`/management/personal-trainer/${personalTrainer.id}/edit`"
+                                        class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:opacity-90 mr-3 inline-flex items-center">
+                                        Edit
+                                    </a>
                                     <button @click="revokePersonalTrainer(personalTrainer.id)" type="button"
                                         class="cursor-pointer text-destructive hover:underline font-medium inline-flex items-center gap-1">
                                         <Trash2 :size="16" />

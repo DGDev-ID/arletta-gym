@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\MembershipApiController;
+use App\Http\Controllers\Api\PtPackageApiController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ScheduleController;
@@ -36,6 +37,9 @@ Route::prefix('auth')->group(function () {
 // ── Public (no auth) ──────────────────────────────────────────
 Route::get('/memberships', [MembershipApiController::class, 'index']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
+// PT packages for landing
+Route::get('/pt-packages', [PtPackageApiController::class, 'index']);
+Route::get('/pt-packages/{id}', [PtPackageApiController::class, 'show']);
 
 // Master gyms for landing select
 Route::get('/gyms', [GymController::class, 'index']);
@@ -46,6 +50,7 @@ Route::get('/trainers/{id}/schedules', [TrainerApiController::class, 'schedules'
 Route::get('/trainers/{id}', [TrainerApiController::class, 'show']);
 
 Route::get('/schedules', [ScheduleController::class, 'index']);
+Route::get('/class-categories', [ScheduleController::class, 'classCategories']);
 Route::get('/classes', [ScheduleController::class, 'classes']);
 
 // ── Authenticated (sanctum) ─────────────────────────────────
@@ -76,6 +81,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Trainer-specific (⚠️ literal path "clients/all" BEFORE wildcard {id})
     Route::get('/trainers/clients/all', [TrainerApiController::class, 'allMembers']);
     Route::get('/trainers/{id}/clients', [TrainerApiController::class, 'clients']);
+    Route::post('/trainers/{id}/description', [TrainerApiController::class, 'updateDescription']);
+    // PT session management (trainer creates/reschedules/cancels sessions)
+    Route::post('/trainers/{trainerId}/sessions', [ScheduleController::class, 'store']);
+    Route::put('/sessions/{id}', [ScheduleController::class, 'update']);
+    Route::post('/sessions/{id}/cancel', [ScheduleController::class, 'cancel']);
+    Route::delete('/sessions/{id}', [ScheduleController::class, 'destroy']);
 });
 
 // ── Webhooks (no auth, signature verification inside) ──────

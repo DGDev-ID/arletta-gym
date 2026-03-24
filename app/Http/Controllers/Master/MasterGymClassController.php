@@ -36,6 +36,8 @@ class MasterGymClassController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'nullable|string|max:100',
+            'level' => 'nullable|string|in:Beginner,Intermediate,Advanced,All Levels',
+            'benefits' => 'nullable|string',
             'default_capacity' => 'required|integer|min:1',
             'duration_minutes' => 'required|integer|min:1',
             'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -44,6 +46,13 @@ class MasterGymClassController extends Controller
 
         if ($request->hasFile('image_url')) {
             $validated['image_url'] = $request->file('image_url')->store('gym-classes', 'public');
+        }
+
+        // Parse benefits textarea (one per line) to JSON array
+        if (isset($validated['benefits']) && is_string($validated['benefits'])) {
+            $validated['benefits'] = array_values(array_filter(
+                array_map('trim', explode("\n", $validated['benefits']))
+            ));
         }
 
         GymClass::create($validated);
@@ -66,6 +75,8 @@ class MasterGymClassController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'nullable|string|max:100',
+            'level' => 'nullable|string|in:Beginner,Intermediate,Advanced,All Levels',
+            'benefits' => 'nullable|string',
             'default_capacity' => 'required|integer|min:1',
             'duration_minutes' => 'required|integer|min:1',
             'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -76,6 +87,13 @@ class MasterGymClassController extends Controller
             $validated['image_url'] = $request->file('image_url')->store('gym-classes', 'public');
         } else {
             unset($validated['image_url']);
+        }
+
+        // Parse benefits textarea (one per line) to JSON array
+        if (isset($validated['benefits']) && is_string($validated['benefits'])) {
+            $validated['benefits'] = array_values(array_filter(
+                array_map('trim', explode("\n", $validated['benefits']))
+            ));
         }
 
         $gymClass->update($validated);
