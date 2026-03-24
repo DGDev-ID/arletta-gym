@@ -82,6 +82,11 @@ class User extends Authenticatable
         return $this->hasMany(GymPt::class, 'pt_id');
     }
 
+    public function ptProfile()
+    {
+        return $this->hasOne(PtProfile::class, 'pt_id');
+    }
+
     public function ptDescriptions()
     {
         return $this->hasMany(PtDescription::class, 'pt_id');

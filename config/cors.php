@@ -18,6 +18,7 @@ return [
 
     'allowed_origins' => [
         env('LANDING_URL', 'http://localhost:5173'),  // Vite dev server
+        'http://localhost:5174',                       // Vite alternate port
         env('APP_URL', 'http://localhost:8000'),
         'https://gym.arlettaluxury.com',
     ],

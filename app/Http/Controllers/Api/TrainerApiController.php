@@ -8,6 +8,7 @@ use App\Models\MasterPtPackage;
 use App\Models\User;
 use App\Models\UserPtPackageMember;
 use App\Models\PtDescription;
+use App\Models\PtProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -15,6 +16,44 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Trainers', description: 'Personal trainer endpoints')]
 class TrainerApiController extends Controller
 {
+    #[OA\Get(
+        path: '/api/trainers/stats',
+        tags: ['Trainers'],
+        summary: 'Get aggregated trainer statistics for the landing page',
+        responses: [
+            new OA\Response(response: 200, description: 'Trainer stats retrieved'),
+        ]
+    )]
+    public function stats(): JsonResponse
+    {
+        $trainerCount = User::role('Personal Trainer')->count();
+
+        $combinedExperience = PtProfile::whereHas('pt', function ($q) {
+            $q->role('Personal Trainer');
+        })->whereNotNull('experience_years')->sum('experience_years');
+
+        $happyClients = UserPtPackageMember::whereHas('userPtPackage', function ($q) {
+            $q->whereHas('pt', function ($q2) {
+                $q2->role('Personal Trainer');
+            });
+        })->distinct('user_id')->count('user_id');
+
+        $avgRating = PtProfile::whereHas('pt', function ($q) {
+            $q->role('Personal Trainer');
+        })->whereNotNull('rating')->avg('rating');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                ['value' => $trainerCount . '+', 'label' => 'Expert Trainers'],
+                ['value' => ($combinedExperience > 0 ? $combinedExperience . '+' : '0'), 'label' => 'Years Combined Experience'],
+                ['value' => ($happyClients > 0 ? $happyClients . '+' : '0'), 'label' => 'Happy Clients'],
+                ['value' => $avgRating ? number_format((float) $avgRating, 1) : 'N/A', 'label' => 'Average Rating'],
+            ],
+            'message' => 'Trainer stats retrieved successfully',
+        ]);
+    }
+
     #[OA\Get(
         path: '/api/trainers',
         tags: ['Trainers'],
@@ -30,7 +69,7 @@ class TrainerApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptDescriptions', 'ptImgUrls']);
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls']);
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -43,13 +82,25 @@ class TrainerApiController extends Controller
         }
 
         $trainers = $query->latest()->get()->map(function ($trainer) {
+            $clientCount = UserPtPackageMember::whereHas('userPtPackage', fn($q) =>
+                $q->where('pt_id', $trainer->id)
+            )->distinct('user_id')->count('user_id');
+
             return [
                 'id' => $trainer->id,
                 'name' => $trainer->name,
-                'description' => $trainer->ptDescriptions->first()->description ?? null,
+                'role' => 'Personal Trainer',
+                'bio' => $trainer->ptDescriptions->first()->description ?? null,
+                'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
                 'images' => $trainer->ptImgUrls->pluck('img_url')->toArray(),
                 'phone_number' => $trainer->userDetail?->phone_number,
                 'gender' => $trainer->userDetail?->gender,
+                'experience' => $trainer->ptProfile?->experience ?? '',
+                'certifications' => $trainer->ptProfile?->certifications ?? [],
+                'specializations' => $trainer->ptProfile?->specializations ?? [],
+                'instagram' => $trainer->ptProfile?->instagram ?? '',
+                'rating' => $trainer->ptProfile?->rating ? (float) $trainer->ptProfile->rating : 0.0,
+                'clients' => $clientCount,
             ];
         });
 
@@ -74,7 +125,7 @@ class TrainerApiController extends Controller
     public function show(int $id): JsonResponse
     {
         $trainer = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym'])
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym'])
             ->findOrFail($id);
 
         // Get PT packages from related gyms
@@ -98,15 +149,27 @@ class TrainerApiController extends Controller
                 ];
             });
 
+        $clientCount = UserPtPackageMember::whereHas('userPtPackage', fn($q) =>
+            $q->where('pt_id', $trainer->id)
+        )->distinct('user_id')->count('user_id');
+
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $trainer->id,
                 'name' => $trainer->name,
-                'description' => $trainer->ptDescriptions->first()->description ?? null,
+                'role' => 'Personal Trainer',
+                'bio' => $trainer->ptDescriptions->first()->description ?? null,
+                'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
                 'images' => $trainer->ptImgUrls->pluck('img_url')->toArray(),
                 'phone_number' => $trainer->userDetail?->phone_number,
                 'gender' => $trainer->userDetail?->gender,
+                'experience' => $trainer->ptProfile?->experience ?? '',
+                'certifications' => $trainer->ptProfile?->certifications ?? [],
+                'specializations' => $trainer->ptProfile?->specializations ?? [],
+                'instagram' => $trainer->ptProfile?->instagram ?? '',
+                'rating' => $trainer->ptProfile?->rating ? (float) $trainer->ptProfile->rating : 0.0,
+                'clients' => $clientCount,
                 'gyms' => $trainer->gymPts->map(fn($gp) => [
                     'id' => $gp->gym->id,
                     'name' => $gp->gym->name,

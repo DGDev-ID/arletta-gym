@@ -45,6 +45,7 @@ Route::get('/pt-packages/{id}', [PtPackageApiController::class, 'show']);
 Route::get('/gyms', [GymController::class, 'index']);
 
 // ⚠️  Literal routes BEFORE wildcard {id} to avoid route conflicts
+Route::get('/trainers/stats', [TrainerApiController::class, 'stats']);
 Route::get('/trainers', [TrainerApiController::class, 'index']);
 Route::get('/trainers/{id}/schedules', [TrainerApiController::class, 'schedules']);
 Route::get('/trainers/{id}', [TrainerApiController::class, 'show']);

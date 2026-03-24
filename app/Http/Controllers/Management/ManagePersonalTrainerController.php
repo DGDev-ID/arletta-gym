@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\PtDescription;
+use App\Models\PtProfile;
 use App\Models\MasterGym;
 
 class ManagePersonalTrainerController extends Controller
@@ -21,7 +22,7 @@ class ManagePersonalTrainerController extends Controller
 
     public function edit(User $personalTrainer)
     {
-        $personalTrainer->load('gymPts.gym', 'ptDescriptions');
+        $personalTrainer->load('gymPts.gym', 'ptDescriptions', 'ptProfile');
 
         $assignedGyms = $personalTrainer->gymPts->map(function ($gp) {
             return [
@@ -33,6 +34,7 @@ class ManagePersonalTrainerController extends Controller
         $allGyms = MasterGym::select('id', 'name')->get()->toArray();
 
         $description = $personalTrainer->ptDescriptions->first()->description ?? null;
+        $profile = $personalTrainer->ptProfile;
 
         return Inertia::render('Management/PersonalTrainer/Edit', [
             'personal_trainer' => [
@@ -40,6 +42,12 @@ class ManagePersonalTrainerController extends Controller
                 'name' => $personalTrainer->name,
                 'description' => $description,
                 'gyms' => $assignedGyms,
+                'experience' => $profile?->experience ?? '',
+                'experience_years' => $profile?->experience_years ?? null,
+                'certifications' => $profile?->certifications ?? [],
+                'specializations' => $profile?->specializations ?? [],
+                'instagram' => $profile?->instagram ?? '',
+                'rating' => $profile?->rating ? (float) $profile->rating : null,
             ],
             'gyms' => $allGyms,
         ]);
@@ -50,8 +58,15 @@ class ManagePersonalTrainerController extends Controller
         $validated = $request->validate([
             'gym_id' => 'required|exists:master_gyms,id',
             'description' => 'nullable|string',
+            'experience' => 'nullable|string|max:100',
+            'experience_years' => 'nullable|integer|min:0|max:100',
+            'certifications' => 'nullable|string',
+            'specializations' => 'nullable|string',
+            'instagram' => 'nullable|string|max:100',
+            'rating' => 'nullable|numeric|min:0|max:5',
         ]);
 
+        // Per-gym description
         PtDescription::updateOrCreate([
             'pt_id' => $personalTrainer->id,
             'gym_id' => $validated['gym_id'],
@@ -59,7 +74,28 @@ class ManagePersonalTrainerController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        return redirect()->back()->with('success', 'Deskripsi Personal Trainer berhasil disimpan.');
+        // Global PT profile
+        $certifications = !empty($validated['certifications'])
+            ? array_values(array_filter(array_map('trim', explode("\n", $validated['certifications']))))
+            : [];
+
+        $specializations = !empty($validated['specializations'])
+            ? array_values(array_filter(array_map('trim', explode("\n", $validated['specializations']))))
+            : [];
+
+        PtProfile::updateOrCreate(
+            ['pt_id' => $personalTrainer->id],
+            [
+                'experience' => $validated['experience'] ?? null,
+                'experience_years' => $validated['experience_years'] ?? null,
+                'certifications' => $certifications,
+                'specializations' => $specializations,
+                'instagram' => $validated['instagram'] ?? null,
+                'rating' => $validated['rating'] ?? null,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Data Personal Trainer berhasil disimpan.');
     }
 
     public function show(Request $request)
