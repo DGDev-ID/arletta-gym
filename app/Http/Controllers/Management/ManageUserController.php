@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -75,9 +76,13 @@ class ManageUserController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'nullable|string|max:20',
+            'photo' => 'nullable|image|max:5120|mimes:jpeg,png,jpg,gif',
+            'emergency_name' => 'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:20',
+            'emergency_relation' => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -86,6 +91,11 @@ class ManageUserController extends Controller
 
             $user->assignRole('User');
 
+            $photoPath = null;
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('uploads/avatar', 'public');
+            }
+
             $user->userDetail()->create([
                 'nik' => $validated['nik'],
                 'birth_place' => $validated['birth_place'],
@@ -93,6 +103,10 @@ class ManageUserController extends Controller
                 'gender' => $validated['gender'],
                 'address' => $validated['address'],
                 'phone_number' => $validated['phone_number'],
+                'photo' => $photoPath,
+                'emergency_name' => $validated['emergency_name'] ?? null,
+                'emergency_phone' => $validated['emergency_phone'] ?? null,
+                'emergency_relation' => $validated['emergency_relation'] ?? null,
             ]);
         });
 
@@ -204,12 +218,15 @@ class ManageUserController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'nullable|string|max:20',
+            'photo' => 'nullable|image|max:5120|mimes:jpeg,png,jpg,gif',
+            'emergency_name' => 'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:20',
+            'emergency_relation' => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($validated, $user) {
+        DB::transaction(function () use ($validated, $user, $request) {
             $userData = [
                 'name' => $validated['name'],
-                // 'email' => $validated['email'],
             ];
 
             if (!empty($validated['password'])) {
@@ -218,16 +235,29 @@ class ManageUserController extends Controller
 
             $user->update($userData);
 
+            $detailData = [
+                'nik' => $validated['nik'],
+                'birth_place' => $validated['birth_place'],
+                'birth_date' => $validated['birth_date'],
+                'gender' => $validated['gender'],
+                'address' => $validated['address'],
+                'phone_number' => $validated['phone_number'],
+                'emergency_name' => $validated['emergency_name'] ?? null,
+                'emergency_phone' => $validated['emergency_phone'] ?? null,
+                'emergency_relation' => $validated['emergency_relation'] ?? null,
+            ];
+
+            if ($request->hasFile('photo')) {
+                // Delete old photo if exists
+                if ($user->userDetail?->photo) {
+                    Storage::disk('public')->delete($user->userDetail->photo);
+                }
+                $detailData['photo'] = $request->file('photo')->store('uploads/avatar', 'public');
+            }
+
             $user->userDetail()->updateOrCreate(
                 ['user_id' => $user->id],
-                [
-                    'nik' => $validated['nik'],
-                    'birth_place' => $validated['birth_place'],
-                    'birth_date' => $validated['birth_date'],
-                    'gender' => $validated['gender'],
-                    'address' => $validated['address'],
-                    'phone_number' => $validated['phone_number'],
-                ]
+                $detailData
             );
         });
 

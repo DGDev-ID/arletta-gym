@@ -28,6 +28,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard/export-csv', [DashboardController::class, 'exportCsv'])->name('dashboard.export-csv');
 
     Route::middleware(['role:Super Admin'])->group(function () {
         Route::prefix('master')->name('master.')->group(function () {

@@ -315,10 +315,15 @@ class AuthController extends Controller
                 'phone' => $user->userDetail?->phone_number,
                 'memberSince' => $user->created_at?->toDateString(),
                 'memberId' => $user->unique_id,
-                'avatar' => $user->userDetail?->avatar ?? null,
+                'avatar' => $user->userDetail?->photo_url ?? null,
             ],
             'membership' => $membershipInfo,
             'upcomingClasses' => $bookings,
+            'emergencyContact' => [
+                'emergency_name' => $user->userDetail?->emergency_name,
+                'emergency_phone' => $user->userDetail?->emergency_phone,
+                'emergency_relation' => $user->userDetail?->emergency_relation,
+            ],
         ];
 
         return response()->json(['success' => true, 'data' => $response]);
@@ -376,7 +381,7 @@ class AuthController extends Controller
                 'name' => $c->name,
                 'sessions' => null,
                 'progress' => null,
-                'avatar' => $c->userDetail?->avatar ?? null,
+                'avatar' => $c->userDetail?->photo_url ?? null,
             ];
         });
 
@@ -393,7 +398,7 @@ class AuthController extends Controller
                 'phone' => $user->userDetail?->phone_number,
                 'joinedAt' => $user->created_at?->toDateString(),
                 'specialty' => $user->userDetail?->specialty ?? null,
-                'avatar' => $user->userDetail?->avatar ?? null,
+                'avatar' => $user->userDetail?->photo_url ?? null,
                 'rating' => null,
                 'totalClients' => $totalClients,
                 'completedSessions' => $completedSessions,

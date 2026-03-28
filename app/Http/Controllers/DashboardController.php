@@ -7,7 +7,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserGym;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
@@ -161,6 +163,64 @@ class DashboardController extends Controller
                 'new_pt'      => $chartNewPt,
             ],
             'recent_transactions' => $recentTransactions,
+        ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $now = Carbon::now();
+
+        $transactions = Transaction::with(['user', 'membership', 'fullPt', 'installmentPt'])
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $filename = 'transaksi_' . $now->format('Y_m') . '.csv';
+
+        return response()->streamDownload(function () use ($transactions) {
+            $handle = fopen('php://output', 'w');
+
+            // BOM for Excel UTF-8
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'ID Transaksi',
+                'Nama Member',
+                'Email',
+                'Tipe Transaksi',
+                'Paket',
+                'Metode Pembayaran',
+                'Total Harga',
+                'Status',
+                'Tanggal',
+            ]);
+
+            foreach ($transactions as $tx) {
+                if ($tx->transaction_type === 'membership') {
+                    $package = $tx->membership?->name ?? 'Membership';
+                } elseif ($tx->transaction_type === 'full_pt') {
+                    $package = $tx->fullPt?->name ?? 'Personal Training';
+                } else {
+                    $package = 'PT (Cicilan)';
+                }
+
+                fputcsv($handle, [
+                    $tx->unique_id,
+                    $tx->user?->name ?? 'Unknown',
+                    $tx->user?->email ?? '',
+                    $tx->transaction_type,
+                    $package,
+                    $tx->method ?? '',
+                    $tx->total_price,
+                    $tx->status,
+                    $tx->created_at->format('d/m/Y H:i'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 }

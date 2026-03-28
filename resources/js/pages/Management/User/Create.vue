@@ -3,9 +3,9 @@ import { Head, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     UserPlus, ScanLine, Lock, User, MapPin,
-    Phone, Calendar, Loader2, Camera, Upload, ChevronDown
+    Phone, Calendar, Loader2, Camera, Upload, ChevronDown, Heart, ImagePlus, X, FlipHorizontal
 } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
 import Textarea from "@/components/ui/textarea/Textarea.vue";
@@ -27,6 +27,74 @@ const form = useForm({
     gender: '',
     address: '',
     phone_number: '',
+    photo: null as File | null,
+
+    emergency_name: '',
+    emergency_phone: '',
+    emergency_relation: '',
+});
+
+const photoPreview = ref<string | null>(null);
+
+const onPhotoChange = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (!target.files?.length) return;
+    const file = target.files[0];
+    form.photo = file;
+    photoPreview.value = URL.createObjectURL(file);
+};
+
+const removePhoto = () => {
+    form.photo = null;
+    photoPreview.value = null;
+};
+
+// Webcam capture
+const showWebcam = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+let mediaStream: MediaStream | null = null;
+
+const openWebcam = async () => {
+    showWebcam.value = true;
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        await new Promise(resolve => setTimeout(resolve, 100)); // wait for DOM
+        if (videoRef.value) {
+            videoRef.value.srcObject = mediaStream;
+        }
+    } catch {
+        alert('Tidak dapat mengakses kamera. Pastikan browser memiliki izin kamera.');
+        showWebcam.value = false;
+    }
+};
+
+const closeWebcam = () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+    }
+    showWebcam.value = false;
+};
+
+const capturePhoto = () => {
+    if (!videoRef.value || !canvasRef.value) return;
+    const video = videoRef.value;
+    const canvas = canvasRef.value;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')!.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+        if (!blob) return;
+        const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        form.photo = file;
+        photoPreview.value = URL.createObjectURL(file);
+        closeWebcam();
+    }, 'image/jpeg', 0.9);
+};
+
+onUnmounted(() => {
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
 });
 
 const isScanning = ref(false);
@@ -78,6 +146,7 @@ const handleFileSelected = async (event: Event) => {
 const submit = () => {
     form.post('/management/user', {
         onFinish: () => form.reset('password'),
+        forceFormData: true,
     });
 };
 </script>
@@ -132,6 +201,35 @@ const submit = () => {
                                             class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Password</label>
                                         <Input v-model="form.password" type="password" placeholder="••••••••"
                                             :error="form.errors.password" class="rounded-xl" />
+                                    </div>
+
+                                    <!-- Photo Upload -->
+                                    <div class="space-y-2">
+                                        <label
+                                            class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Foto User</label>
+                                        <div class="flex flex-col items-center gap-3">
+                                            <div v-if="photoPreview"
+                                                class="relative w-28 h-28 rounded-xl overflow-hidden border shadow-sm">
+                                                <img :src="photoPreview" alt="Photo preview"
+                                                    class="w-full h-full object-cover" />
+                                                <button type="button" @click="removePhoto"
+                                                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 cursor-pointer">
+                                                    ✕
+                                                </button>
+                                            </div>
+                                            <label
+                                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-all text-xs font-bold cursor-pointer">
+                                                <ImagePlus :size="16" />
+                                                <span>{{ photoPreview ? 'Ganti Foto' : 'Upload Foto' }}</span>
+                                                <input type="file" accept="image/*" class="hidden"
+                                                    @change="onPhotoChange" />
+                                            </label>
+                                            <button type="button" @click="openWebcam"
+                                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-all text-xs font-bold cursor-pointer">
+                                                <Camera :size="16" />
+                                                <span>Ambil Foto</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -232,11 +330,77 @@ const submit = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Emergency Contact Section -->
+                            <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
+                                <h3 class="font-semibold flex items-center gap-2 text-foreground">
+                                    <Heart :size="18" class="text-primary" />
+                                    Kontak Darurat
+                                </h3>
+                                <hr class="border-muted" />
+
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div class="space-y-2 md:col-span-2">
+                                        <label
+                                            class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nama Kontak Darurat</label>
+                                        <Input v-model="form.emergency_name" placeholder="Nama kontak darurat"
+                                            class="rounded-xl" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label
+                                            class="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                            <Phone :size="12" /> No HP Darurat
+                                        </label>
+                                        <Input v-model="form.emergency_phone" placeholder="08xxxxxxxxxx"
+                                            class="rounded-xl" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label
+                                            class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hubungan</label>
+                                        <Input v-model="form.emergency_relation" placeholder="Contoh: Orang tua, Saudara"
+                                            class="rounded-xl" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
                 </form>
             </div>
         </div>
+
+        <!-- Webcam Modal -->
+        <Teleport to="body">
+            <div v-if="showWebcam"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+                @click.self="closeWebcam">
+                <div class="bg-background rounded-2xl shadow-2xl p-6 w-full max-w-lg space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold flex items-center gap-2">
+                            <Camera :size="18" class="text-primary" /> Ambil Foto via Kamera
+                        </h3>
+                        <button type="button" @click="closeWebcam"
+                            class="rounded-full p-1.5 hover:bg-muted transition-colors">
+                            <X :size="18" />
+                        </button>
+                    </div>
+                    <div class="relative rounded-xl overflow-hidden bg-black aspect-video">
+                        <video ref="videoRef" autoplay playsinline muted
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <canvas ref="canvasRef" class="hidden" />
+                    <div class="flex gap-3">
+                        <button type="button" @click="capturePhoto"
+                            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors cursor-pointer">
+                            <Camera :size="16" /> Ambil Foto
+                        </button>
+                        <button type="button" @click="closeWebcam"
+                            class="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors cursor-pointer">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>

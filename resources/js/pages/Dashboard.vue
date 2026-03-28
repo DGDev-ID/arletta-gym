@@ -393,6 +393,7 @@ const revenueChartOptions = computed<any>(() => ({
 
             <!-- Export Button (full width) -->
             <div class="mt-4">
+                <a href="/dashboard/export-csv" download>
                 <Button
                     class="mt-2 h-11 w-full rounded-xl bg-zinc-900 text-white font-semibold tracking-wide hover:bg-zinc-700 active:scale-[0.98] transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -401,6 +402,7 @@ const revenueChartOptions = computed<any>(() => ({
                     </svg>
                     Export Transaksi
                 </Button>
+                </a>
             </div>
 
         </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 class UserDetail extends Model
@@ -14,10 +15,20 @@ class UserDetail extends Model
         'gender',
         'address',
         'phone_number',
+        'photo',
         'emergency_name',
         'emergency_phone',
         'emergency_relation',
     ];
+
+    protected $appends = ['photo_url'];
+
+    protected function photoUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->photo ? asset('storage/' . $this->photo) : null,
+        );
+    }
 
     // Relations
     public function user()
