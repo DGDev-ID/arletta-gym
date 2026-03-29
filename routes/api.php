@@ -47,6 +47,8 @@ Route::get('/gyms', [GymController::class, 'index']);
 // ⚠️  Literal routes BEFORE wildcard {id} to avoid route conflicts
 Route::get('/trainers/stats', [TrainerApiController::class, 'stats']);
 Route::get('/trainers', [TrainerApiController::class, 'index']);
+// /trainers/me must come before /trainers/{id} wildcard
+Route::middleware('auth:sanctum')->get('/trainers/me', [AuthController::class, 'trainerMe']);
 Route::get('/trainers/{id}/schedules', [TrainerApiController::class, 'schedules']);
 Route::get('/trainers/{id}', [TrainerApiController::class, 'show']);
 
@@ -61,7 +63,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/uploads', [ProfileController::class, 'upload']);
         // Role-specific profile endpoints for landing
         Route::get('/members/me', [AuthController::class, 'memberMe']);
-        Route::get('/trainers/me', [AuthController::class, 'trainerMe']);
 
     // Bookings
     Route::get('/bookings', [BookingController::class, 'index']);
