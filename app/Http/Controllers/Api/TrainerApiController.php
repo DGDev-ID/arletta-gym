@@ -260,7 +260,11 @@ class TrainerApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $query = User::role('User')->with('userDetail');
+        $query = User::role('User')
+            ->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'Personal Trainer');
+            })
+            ->with('userDetail');
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
