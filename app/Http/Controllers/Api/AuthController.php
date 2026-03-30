@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Services\WhatsappBlastService as ServicesWhatsappBlastService;
 use App\Models\HealthPolicyResponse;
 use App\Models\User;
 use App\Models\UserGym;
@@ -20,7 +21,6 @@ use App\Models\ClassSchedule;
 use App\Models\UserPtPackageMember;
 use App\Models\UserPtPackageDetail;
 use App\Models\WABlastTemplate;
-use App\Services\WhatsappBlastService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\URL;
 
@@ -76,7 +76,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function register(Request $request, WhatsappBlastService $waService): JsonResponse
+    public function register(Request $request, ServicesWhatsappBlastService $waService): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
