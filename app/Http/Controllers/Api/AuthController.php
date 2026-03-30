@@ -137,15 +137,16 @@ class AuthController extends Controller
             return $user;
         });
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        // $token = $user->createToken('auth-token')->plainTextToken;
+        $user->sendEmailVerificationNotification();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'user' => $this->formatUser($user),
-                'token' => $token,
+                // 'token' => $token,
             ],
-            'message' => 'Registration successful',
+            'message' => 'Berhasil mendaftar. Silakan cek email Anda untuk verifikasi.',
         ], 201);
     }
 
@@ -194,6 +195,13 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email not verified. Please check your email for verification link.',
+            ], 403);
         }
 
         $token = $user->createToken('auth-token')->plainTextToken;

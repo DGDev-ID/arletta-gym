@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\TrainerApiController;
 use App\Http\Controllers\Api\GymController;
 use App\Http\Controllers\Api\WaitlistController;
+use App\Http\Controllers\EmailVerificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +36,11 @@ Route::prefix('auth')->group(function () {
 });
 
 // ── Public (no auth) ──────────────────────────────────────────
+Route::prefix('email')->group(function () {
+    Route::get('/verify/{id}/{hash}', [EmailVerificationController::class, 'verify']);
+    Route::post('/resend', [EmailVerificationController::class, 'resend']);
+});
+
 Route::get('/memberships', [MembershipApiController::class, 'index']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
 // PT packages for landing
