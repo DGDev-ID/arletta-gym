@@ -123,4 +123,9 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'saungwa' => [
+        'app_key' => env('SAUNGWA_APP_KEY'),
+        'auth_key' => env('SAUNGWA_AUTH_KEY'),
+        'base_url' => env('SAUNGWA_BASE_URL'),
+    ],
 ];

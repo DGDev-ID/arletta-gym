@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountVerificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\MembershipApiController;
@@ -36,10 +37,6 @@ Route::prefix('auth')->group(function () {
 });
 
 // ── Public (no auth) ──────────────────────────────────────────
-Route::prefix('email')->group(function () {
-    Route::get('/verify/{id}/{hash}', [EmailVerificationController::class, 'verify']);
-    Route::post('/resend', [EmailVerificationController::class, 'resend']);
-});
 
 Route::get('/memberships', [MembershipApiController::class, 'index']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
@@ -67,8 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::put('/users/me', [ProfileController::class, 'update']);
     Route::post('/uploads', [ProfileController::class, 'upload']);
-        // Role-specific profile endpoints for landing
-        Route::get('/members/me', [AuthController::class, 'memberMe']);
+    // Role-specific profile endpoints for landing
+    Route::get('/members/me', [AuthController::class, 'memberMe']);
 
     // Bookings
     Route::get('/bookings', [BookingController::class, 'index']);
@@ -90,11 +87,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trainers/clients/all', [TrainerApiController::class, 'allMembers']);
     Route::get('/trainers/{id}/clients', [TrainerApiController::class, 'clients']);
     Route::post('/trainers/{id}/description', [TrainerApiController::class, 'updateDescription']);
+
     // PT session management (trainer creates/reschedules/cancels sessions)
     Route::post('/trainers/{trainerId}/sessions', [ScheduleController::class, 'store']);
     Route::put('/sessions/{id}', [ScheduleController::class, 'update']);
     Route::post('/sessions/{id}/cancel', [ScheduleController::class, 'cancel']);
     Route::delete('/sessions/{id}', [ScheduleController::class, 'destroy']);
+
+    // Verify
+    Route::post('/verify/send', [AccountVerificationController::class, 'sendVerification']);
+    Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verify'])
+        ->name('verification.verify')
+        ->middleware('signed');
 });
 
 // ── Webhooks (no auth, signature verification inside) ──────

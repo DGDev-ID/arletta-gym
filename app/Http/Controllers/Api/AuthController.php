@@ -19,6 +19,10 @@ use App\Models\Booking;
 use App\Models\ClassSchedule;
 use App\Models\UserPtPackageMember;
 use App\Models\UserPtPackageDetail;
+use App\Models\WABlastTemplate;
+use App\Services\WhatsappBlastService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\URL;
 
 #[OA\Tag(name: 'Auth', description: 'Authentication endpoints')]
 class AuthController extends Controller
@@ -55,7 +59,9 @@ class AuthController extends Controller
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Registration successful',
+            new OA\Response(
+                response: 201,
+                description: 'Registration successful',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'success', type: 'boolean', example: true),
@@ -70,7 +76,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, WhatsappBlastService $waService): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -138,7 +144,29 @@ class AuthController extends Controller
         });
 
         // $token = $user->createToken('auth-token')->plainTextToken;
-        $user->sendEmailVerificationNotification();
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            Carbon::now()->addMinutes(60),
+            [
+                'id' => $user->id,
+                'hash' => sha1($user->email),
+            ]
+        );
+
+        try {
+            $waBlastTemplate = WABlastTemplate::where('template_name', 'ACCOUNT_VERIFICATION')->firstOrFail();
+            $waService->send(
+                $user->userDetail->phone_number,
+                $waBlastTemplate->template_id,
+                [
+                    '{user}' => $user->name,
+                    '{app_name}' => config('app.name'),
+                    '{verification_link}' => $verificationUrl,
+                ]
+            );
+        } catch (\Exception $e) {
+            
+        }
 
         return response()->json([
             'success' => true,
@@ -165,7 +193,9 @@ class AuthController extends Controller
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Login successful',
+            new OA\Response(
+                response: 200,
+                description: 'Login successful',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'success', type: 'boolean', example: true),
@@ -200,7 +230,7 @@ class AuthController extends Controller
         if (!$user->hasVerifiedEmail()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Email not verified. Please check your email for verification link.',
+                'message' => 'Akun belum terverifikasi. Silakan cek WhatsApp Anda.',
             ], 403);
         }
 
@@ -241,7 +271,9 @@ class AuthController extends Controller
         summary: 'Get authenticated user profile',
         security: [['sanctum' => []]],
         responses: [
-            new OA\Response(response: 200, description: 'User profile retrieved',
+            new OA\Response(
+                response: 200,
+                description: 'User profile retrieved',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'success', type: 'boolean', example: true),
@@ -269,7 +301,9 @@ class AuthController extends Controller
         summary: 'Get member-specific dashboard/profile for landing',
         security: [['sanctum' => []]],
         responses: [
-            new OA\Response(response: 200, description: 'Member profile retrieved',
+            new OA\Response(
+                response: 200,
+                description: 'Member profile retrieved',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'success', type: 'boolean', example: true),
@@ -344,7 +378,9 @@ class AuthController extends Controller
         summary: 'Get trainer-specific dashboard/profile for landing',
         security: [['sanctum' => []]],
         responses: [
-            new OA\Response(response: 200, description: 'Trainer profile retrieved',
+            new OA\Response(
+                response: 200,
+                description: 'Trainer profile retrieved',
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'success', type: 'boolean', example: true),
