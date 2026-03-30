@@ -21,9 +21,9 @@ class AccountVerificationController extends Controller
         $this->waService = $waService;
     }
 
-    public function sendVerification($email)
+    public function sendVerification(Request $request)
     {
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $request->email)->firstOrFail();
 
         if ($user->email_verified_at) {
             return response()->json([
