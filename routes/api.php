@@ -59,6 +59,12 @@ Route::get('/schedules', [ScheduleController::class, 'index']);
 Route::get('/class-categories', [ScheduleController::class, 'classCategories']);
 Route::get('/classes', [ScheduleController::class, 'classes']);
 
+// Verify
+Route::post('/verify/send', [AccountVerificationController::class, 'sendVerification']);
+Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verify'])
+    ->name('verification.verify')
+    ->middleware('signed');
+
 // ── Authenticated (sanctum) ─────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     // Profile
@@ -93,12 +99,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/sessions/{id}', [ScheduleController::class, 'update']);
     Route::post('/sessions/{id}/cancel', [ScheduleController::class, 'cancel']);
     Route::delete('/sessions/{id}', [ScheduleController::class, 'destroy']);
-
-    // Verify
-    Route::post('/verify/send', [AccountVerificationController::class, 'sendVerification']);
-    Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verify'])
-        ->name('verification.verify')
-        ->middleware('signed');
 });
 
 // ── Webhooks (no auth, signature verification inside) ──────
