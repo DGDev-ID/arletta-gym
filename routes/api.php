@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/reschedule', [BookingController::class, 'reschedule']);
 
     // Waitlist & Online class
+    Route::get('/waitlist', [WaitlistController::class, 'index']);
     Route::post('/waitlist', [WaitlistController::class, 'store']);
     Route::post('/online-class/join', [WaitlistController::class, 'joinOnlineClass']);
 
