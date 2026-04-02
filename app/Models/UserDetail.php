@@ -23,10 +23,25 @@ class UserDetail extends Model
 
     protected $appends = ['photo_url'];
 
+    protected function phoneNumber(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!$value) return null;
+
+                if (str_starts_with($value, '0')) {
+                    return '62' . substr($value, 1);
+                }
+
+                return $value;
+            }
+        );
+    }
+
     protected function photoUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->photo ? asset('storage/' . $this->photo) : null,
+            get: fn() => $this->photo ? asset('storage/' . $this->photo) : null,
         );
     }
 
