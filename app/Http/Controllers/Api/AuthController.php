@@ -334,7 +334,14 @@ class AuthController extends Controller
         // Upcoming classes / bookings
         $bookings = Booking::where('user_id', $user->id)
             ->whereHas('classSchedule', function ($q) {
-                $q->whereDate('date', '>=', now()->toDateString())->where('is_cancelled', false);
+                $q->where('is_cancelled', false)
+                  ->where(function ($q2) {
+                      $q2->where('date', '>', now()->toDateString())
+                         ->orWhere(function ($q3) {
+                             $q3->where('date', now()->toDateString())
+                                ->where('end_time', '>', now()->format('H:i:s'));
+                         });
+                  });
             })
             ->with(['classSchedule.gymClass', 'classSchedule.trainer'])
             ->orderByDesc('created_at')

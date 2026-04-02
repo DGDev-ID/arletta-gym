@@ -122,7 +122,7 @@ class ProfileController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|max:5120|mimes:jpeg,png,jpg,gif,pdf',
+            'file' => 'required|file|max:30720|mimes:jpeg,png,jpg,gif,pdf',
             'type' => 'nullable|string|in:avatar,document,other',
         ]);
 
