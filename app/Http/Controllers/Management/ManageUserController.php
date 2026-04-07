@@ -6,6 +6,7 @@ use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
+use App\Http\Services\WhatsappBlastService;
 use App\Models\MasterGym;
 use App\Models\MembershipPromo;
 use App\Models\PtPackagePromo;
@@ -153,16 +154,16 @@ class ManageUserController extends Controller
         ]);
     }
 
-    public function approveOrRejectManualPayment(Request $request, Transaction $transaction)
+    public function approveOrRejectManualPayment(Request $request, Transaction $transaction, WhatsappBlastService $whatsappBlastService)
     {
         $request->validate([
             'action' => 'required|in:approve,reject'
         ]);
 
         try {
-            DB::transaction(function () use ($transaction, $request) {
+            DB::transaction(function () use ($transaction, $request, $whatsappBlastService) {
                 if ($request->action === 'approve') {
-                    UpdateStatusTransactionService::makeSuccess($transaction, Auth::id());
+                    UpdateStatusTransactionService::makeSuccess($transaction, Auth::id(), $whatsappBlastService);
                 } else {
                     UpdateStatusTransactionService::makeFailed($transaction, Auth::id());
                 }
