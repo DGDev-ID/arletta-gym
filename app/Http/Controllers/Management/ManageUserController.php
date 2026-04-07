@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Management;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
@@ -93,7 +94,11 @@ class ManageUserController extends Controller
 
             $photoPath = null;
             if ($request->hasFile('photo')) {
-                $photoPath = $request->file('photo')->store('uploads/avatar', 'public');
+                $file = $request->file('photo');
+                $tempFileName = S3Helper::storeFileTemp($file);
+                $s3Path = S3Helper::storeFileToS3("user-profile", $tempFileName);
+                $photoPath = S3Helper::getUrlFileS3("user-profile", $tempFileName);
+                S3Helper::removeFileTemp($tempFileName);
             }
 
             $user->userDetail()->create([
