@@ -33,7 +33,7 @@ class AccountVerificationController extends Controller
 
         // generate signed URL (valid 60 menit)
         $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
+            'api.verification.verify',
             Carbon::now()->addMinutes(60),
             [
                 'id' => $user->id,
@@ -65,7 +65,7 @@ class AccountVerificationController extends Controller
         }
     }
 
-    public function verify(Request $request)
+    public function verifyEmail(Request $request)
     {
         // cek signature (WAJIB)
         if (!$request->hasValidSignature()) {

@@ -62,8 +62,8 @@ Route::get('/classes', [ScheduleController::class, 'classes']);
 
 // Verify
 Route::post('/verify/send', [AccountVerificationController::class, 'sendVerification']);
-Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verify'])
-    ->name('verification.verify')
+Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verifyEmail'])
+    ->name('api.verification.verify')
     ->middleware('signed');
 
 // ── Authenticated (sanctum) ─────────────────────────────────

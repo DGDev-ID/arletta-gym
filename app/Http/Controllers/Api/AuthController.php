@@ -145,7 +145,7 @@ class AuthController extends Controller
 
         // $token = $user->createToken('auth-token')->plainTextToken;
         $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
+            'api.verification.verify',
             Carbon::now()->addMinutes(60),
             [
                 'id' => $user->id,
