@@ -37,6 +37,9 @@ class WhatsappBlastService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $postFields,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+            ],
         ]);
 
         $response = curl_exec($curl);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -122,20 +123,35 @@ class ProfileController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|max:30720|mimes:jpeg,png,jpg,gif,pdf',
-            'type' => 'nullable|string|in:avatar,document,other',
+            'file' => 'required|file|max:30720|mimes:jpeg,png,jpg,gif,pdf,webp',
         ]);
 
-        $type = $request->input('type', 'other');
-        $path = $request->file('file')->store("uploads/{$type}", 'public');
+        try {
+            $file = $request->file('file');
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'url' => Storage::disk('public')->url($path),
-                'path' => $path,
-            ],
-            'message' => 'File uploaded successfully',
-        ]);
+            $tempFileName = S3Helper::storeFileTemp($file);
+            $s3Path = S3Helper::storeFileToS3("user-profile", $tempFileName);
+            $url = S3Helper::getUrlFileS3("user-profile", $tempFileName);
+
+            S3Helper::removeFileTemp($tempFileName);
+
+            $user = $request->user();
+            $user->userDetail()->update([
+                'photo' => $url,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'url' => $url,
+                ],
+                'message' => 'File uploaded successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

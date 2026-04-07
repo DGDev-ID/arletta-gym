@@ -41,7 +41,11 @@ class UserDetail extends Model
     protected function photoUrl(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->photo ? asset('storage/' . $this->photo) : null,
+            get: function () {
+                if (!$this->photo) return null;
+
+                return $this->photo;
+            },
         );
     }
 
