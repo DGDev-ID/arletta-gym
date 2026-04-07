@@ -33,10 +33,56 @@ class S3Helper
     public static function storeFileTemp(UploadedFile $file): string
     {
         $uuid = (string) Str::uuid();
-        $extension = $file->getClientOriginalExtension();
-        $fileName = "{$uuid}.{$extension}";
+        $mime = $file->getMimeType();
 
-        Storage::disk('local')->putFileAs('temp', $file, $fileName);
+        $isImage = str_starts_with($mime, 'image/');
+
+        $extension = $file->getClientOriginalExtension();
+
+        if (!$isImage) {
+            $fileName = "{$uuid}.{$extension}";
+            Storage::disk('local')->putFileAs('temp', $file, $fileName);
+
+            return $fileName;
+        }
+
+        $fileName = "{$uuid}.webp";
+        $tempPath = storage_path("app/temp/{$fileName}");
+
+        if (!is_dir(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0755, true);
+        }
+
+        switch ($mime) {
+            case 'image/jpeg':
+            case 'image/jpg':
+                $image = imagecreatefromjpeg($file->getRealPath());
+                break;
+
+            case 'image/png':
+                $image = imagecreatefrompng($file->getRealPath());
+                imagepalettetotruecolor($image);
+                imagealphablending($image, true);
+                imagesavealpha($image, true);
+                break;
+
+            case 'image/gif':
+                $image = imagecreatefromgif($file->getRealPath());
+                break;
+
+            case 'image/webp':
+                Storage::disk('local')->putFileAs('temp', $file, $fileName);
+                return $fileName;
+
+            default:
+                $fileName = "{$uuid}.{$extension}";
+                Storage::disk('local')->putFileAs('temp', $file, $fileName);
+                return $fileName;
+        }
+
+        imagewebp($image, $tempPath, 80);
+
+        imagedestroy($image);
 
         return $fileName;
     }
