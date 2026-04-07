@@ -198,6 +198,13 @@ class ProfileController extends Controller
             ], 400);
         }
 
+        if ($userPtPackage->status != 'done_payment') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trainer can only be assigned to user PT packages with done_payment status',
+            ], 400);
+        }
+
         $ptPackage = MasterPtPackage::where('id', $userPtPackage->pt_package_id)
             ->where('gym_id', $ptGym->gym_id)
             ->first();
