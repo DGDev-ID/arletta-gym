@@ -45,6 +45,11 @@ class MasterGym extends Model
         return $this->belongsToMany(User::class, 'gym_pts', 'gym_id', 'pt_id');
     }
 
+    public function gymPts()
+    {
+        return $this->hasMany(GymPt::class, 'gym_id');
+    }
+
     public function memberships()
     {
         return $this->hasMany(MasterMembership::class, 'gym_id');
