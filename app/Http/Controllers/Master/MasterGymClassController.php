@@ -46,7 +46,7 @@ class MasterGymClassController extends Controller
         ]);
 
         if ($request->hasFile('image_url')) {
-            $file = $request->file('file');
+            $file = $request->file('image_url');
 
             $tempFileName = S3Helper::storeFileTemp($file);
             $s3Path = S3Helper::storeFileToS3("gym-class", $tempFileName);
@@ -92,7 +92,7 @@ class MasterGymClassController extends Controller
         ]);
 
         if ($request->hasFile('image_url')) {
-            $file = $request->file('file');
+            $file = $request->file('image_url');
 
             $tempFileName = S3Helper::storeFileTemp($file);
             $s3Path = S3Helper::storeFileToS3("gym-class", $tempFileName);
