@@ -53,7 +53,7 @@ class UpdateStatusTransactionService
                             '{TRANSACTION_ID}' => $transaction->unique_id,
                             '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
                             '{MEMBERSHIP_DAYS}' => $transaction->sessions_or_days,
-                            '{TRANSACTION_TOTAL_PRICE}' => $transaction->total_price,
+                            '{TRANSACTION_TOTAL_PRICE}' => 'Rp ' . number_format($transaction->total_price, 0, ',', '.')
                         ]
                     );
                 } catch (\Exception $e) {
