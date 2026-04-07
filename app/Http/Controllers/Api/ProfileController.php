@@ -135,6 +135,11 @@ class ProfileController extends Controller
 
             S3Helper::removeFileTemp($tempFileName);
 
+            $user = $request->user();
+            $user->userDetail()->update([
+                'photo' => $url,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'data' => [
