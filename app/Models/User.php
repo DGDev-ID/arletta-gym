@@ -11,6 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\UserGym;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -131,6 +132,6 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function userGyms()
     {
-        return $this->belongsToMany(UserGym::class, 'user_gyms', 'user_id', 'gym_id');
+        return $this->hasMany(UserGym::class, 'user_id');
     }
 }
