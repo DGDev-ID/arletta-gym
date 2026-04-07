@@ -13,6 +13,7 @@ use App\Models\WABlastTemplate;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UpdateStatusTransactionService
 {
@@ -41,6 +42,7 @@ class UpdateStatusTransactionService
             if ($transaction->transaction_type == "membership") {
                 // Kirim Invoice
                 try {
+                    Log::info("Sending WA Blast for Transaction ID: {$transaction->unique_id}");
                     $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_MEMBERSHIP')->firstOrFail();
                     $userPhoneNumber = $transaction->user->userDetail->phone_number;
                     $waBlastService->send(
@@ -51,11 +53,11 @@ class UpdateStatusTransactionService
                             '{TRANSACTION_ID}' => $transaction->unique_id,
                             '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
                             '{MEMBERSHIP_DAYS}' => $transaction->sessions_or_days,
-                            '{TRANSACTION_TOTAL_PRICE}' => $transaction->total_price,
+                            '{TRANSACTION_TOTAL_PRICE}' => 'Rp ' . number_format($transaction->total_price, 0, ',', '.')
                         ]
                     );
                 } catch (\Exception $e) {
-                    // Ignore
+                    Log::error("Failed to send WA Blast for Transaction ID: {$transaction->unique_id}. Error: " . $e->getMessage());
                 }
 
 
@@ -93,7 +95,7 @@ class UpdateStatusTransactionService
                 $ptPackage = MasterPtPackage::findOrFail($transaction->full_pt_id);
                 $userPtPackage = UserPtPackage::create([
                     'pt_package_id' => $ptPackage->id,
-                    'pt_id' => $transaction->trainer_id,
+                    // 'pt_id' => $transaction->trainer_id,
                     'sessions_remaining' => $transaction->sessions_or_days,
                     'status' => 'done_payment'
                 ]);

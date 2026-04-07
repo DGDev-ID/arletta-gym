@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\MidtransService;
 use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
+use App\Http\Services\WhatsappBlastService;
 use App\Models\Signature;
 use App\Models\Transaction;
 use App\Models\User;
@@ -67,7 +68,7 @@ class PaymentController extends Controller
             'dp_percent' => 'nullable|required_if:payment_type,dp_payment|numeric|min:0|max:100',
             'promo_code' => 'nullable|string',
             'signature_data' => 'nullable|string',
-            'trainer_id' => 'nullable|exists:users,id',
+            // 'trainer_id' => 'nullable|exists:users,id',
         ]);
 
         $data['user_id'] = $user->id;
@@ -127,7 +128,7 @@ class PaymentController extends Controller
             new OA\Response(response: 200, description: 'Webhook processed'),
         ]
     )]
-    public function webhook(Request $request): JsonResponse
+    public function webhook(Request $request, WhatsappBlastService $whatsappBlastService): JsonResponse
     {
         $payload = $request->all();
 
@@ -149,20 +150,16 @@ class PaymentController extends Controller
 
         // Extract transaction ID from order_id (format: {id}-{timestamp})
         $transactionId = explode('-', $orderId)[0] ?? null;
-        $transaction = Transaction::find($transactionId);
-
-        if (!$transaction) {
-            return response()->json(['message' => 'Transaction not found'], 404);
-        }
+        $transaction = Transaction::findOrFail($transactionId);
 
         $transactionStatus = $payload['transaction_status'] ?? '';
         $fraudStatus = $payload['fraud_status'] ?? 'accept';
 
         try {
-            DB::transaction(function () use ($transaction, $transactionStatus, $fraudStatus) {
+            DB::transaction(function () use ($transaction, $transactionStatus, $fraudStatus, $whatsappBlastService) {
                 if ($transactionStatus === 'capture' || $transactionStatus === 'settlement') {
                     if ($fraudStatus === 'accept') {
-                        UpdateStatusTransactionService::makeSuccess($transaction);
+                        UpdateStatusTransactionService::makeSuccess($transaction, null, $whatsappBlastService);
                     }
                 } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                     UpdateStatusTransactionService::makeFailed($transaction);
