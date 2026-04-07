@@ -8,7 +8,7 @@ class Transaction extends Model
 {
     protected $fillable = [
         'user_id',
-        'trainer_id',
+        // 'trainer_id',
         'unique_id',
         'method',
         'method_midtrans_detail',

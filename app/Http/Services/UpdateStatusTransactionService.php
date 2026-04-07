@@ -93,7 +93,7 @@ class UpdateStatusTransactionService
                 $ptPackage = MasterPtPackage::findOrFail($transaction->full_pt_id);
                 $userPtPackage = UserPtPackage::create([
                     'pt_package_id' => $ptPackage->id,
-                    'pt_id' => $transaction->trainer_id,
+                    // 'pt_id' => $transaction->trainer_id,
                     'sessions_remaining' => $transaction->sessions_or_days,
                     'status' => 'done_payment'
                 ]);
