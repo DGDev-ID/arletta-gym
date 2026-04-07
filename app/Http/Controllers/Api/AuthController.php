@@ -22,6 +22,7 @@ use App\Models\UserPtPackageMember;
 use App\Models\UserPtPackageDetail;
 use App\Models\WABlastTemplate;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 
 #[OA\Tag(name: 'Auth', description: 'Authentication endpoints')]
@@ -165,7 +166,6 @@ class AuthController extends Controller
                 ]
             );
         } catch (\Exception $e) {
-            
         }
 
         return response()->json([
@@ -335,13 +335,13 @@ class AuthController extends Controller
         $bookings = Booking::where('user_id', $user->id)
             ->whereHas('classSchedule', function ($q) {
                 $q->where('is_cancelled', false)
-                  ->where(function ($q2) {
-                      $q2->where('date', '>', now()->toDateString())
-                         ->orWhere(function ($q3) {
-                             $q3->where('date', now()->toDateString())
-                                ->where('end_time', '>', now()->format('H:i:s'));
-                         });
-                  });
+                    ->where(function ($q2) {
+                        $q2->where('date', '>', now()->toDateString())
+                            ->orWhere(function ($q3) {
+                                $q3->where('date', now()->toDateString())
+                                    ->where('end_time', '>', now()->format('H:i:s'));
+                            });
+                    });
             })
             ->with(['classSchedule.gymClass', 'classSchedule.trainer'])
             ->orderByDesc('created_at')
@@ -514,42 +514,140 @@ class AuthController extends Controller
         ]);
     }
 
-    #[OA\Post(
-        path: '/api/auth/forgot-password',
-        tags: ['Auth'],
-        summary: 'Send password reset link',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['email'],
-                properties: [
-                    new OA\Property(property: 'email', type: 'string', format: 'email'),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(response: 200, description: 'Reset link sent'),
-        ]
-    )]
-    public function forgotPassword(Request $request): JsonResponse
+    // Reset Password
+    public function sendOTP(Request $request): JsonResponse
     {
         $request->validate([
             'email' => 'required|email|exists:users,email',
         ]);
 
-        $status = Password::sendResetLink($request->only('email'));
+        $otp = rand(10000, 99999);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'token' => Hash::make($otp),
+                'created_at' => now()
+            ]
+        );
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Password reset link sent to your email.',
-            ]);
+        $user = User::with('userDetail')->where('email', $request->email)->first();
+        $userPhone = $user->userDetail->phone_number;
+
+        $userPhone = preg_replace('/[^0-9]/', '', $userPhone);
+
+        if (str_starts_with($userPhone, '0')) {
+            $userPhone = '62' . substr($userPhone, 1);
+        } elseif (!str_starts_with($userPhone, '62')) {
+            $userPhone = '62' . $userPhone;
         }
 
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
+        try {
+            $waBlastTemplate = WABlastTemplate::where('template_name', 'OTP_RESET_PASSWORD')->firstOrFail();
+            $waService = new ServicesWhatsappBlastService();
+            $waService->send(
+                $userPhone,
+                $waBlastTemplate->template_id,
+                [
+                    '{CUST_NAME}' => $user->name,
+                    '{OTP}' => $otp,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error("Failed to send OTP WA Blast for email: {$request->email}. Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim OTP ke WhatsApp. Silakan coba lagi.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'email' => $request->email,
+            ],
+            'message' => 'OTP telah dikirim ke WhatsApp Anda (' . $userPhone . '). Silakan periksa pesan Anda.',
         ]);
     }
+
+    public function submitToken(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'token' => 'required|string',
+        ]);
+
+        $reset = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (!$reset) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak ditemukan untuk email ini.',
+            ], 400);
+        }
+
+        if (!Hash::check($request->token, $reset->token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token salah.',
+            ], 400);
+        }
+        if (!$reset || !Hash::check($request->token, $reset->token) || Carbon::parse($reset->created_at)->addMinutes(15)->isPast()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP tidak valid atau sudah kedaluwarsa.',
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OTP valid. Anda dapat melanjutkan untuk mereset password.',
+        ]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'token' => 'required|string',
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan.',
+            ], 404);
+        }
+
+        $reset = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (!Hash::check($request->token, $reset->token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token salah.',
+            ], 400);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil direset.',
+        ]);
+    }
+    // Done Reset Password
 
     #[OA\Post(
         path: '/api/auth/reset-password',
