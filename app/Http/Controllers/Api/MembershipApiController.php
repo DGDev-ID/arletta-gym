@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MasterGym;
 use App\Models\MasterMembership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -93,6 +94,15 @@ class MembershipApiController extends Controller
                 ]),
             ],
             'message' => 'Membership detail retrieved successfully',
+        ]);
+    }
+
+    public function listGym() {
+        $data = MasterGym::select('id', 'name')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'message' => 'Gyms retrieved successfully',
         ]);
     }
 }

@@ -69,7 +69,7 @@ class TrainerApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'userDetail']);
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls']);
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -91,7 +91,8 @@ class TrainerApiController extends Controller
                 'name' => $trainer->name,
                 'role' => 'Personal Trainer',
                 'bio' => $trainer->ptDescriptions->first()->description ?? null,
-                'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
+                // 'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
+                'image' => $trainer->userDetail->photo,
                 'images' => $trainer->ptImgUrls->pluck('img_url')->toArray(),
                 'phone_number' => $trainer->userDetail?->phone_number,
                 'gender' => $trainer->userDetail?->gender,
@@ -125,7 +126,7 @@ class TrainerApiController extends Controller
     public function show(int $id): JsonResponse
     {
         $trainer = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym', 'userDetail'])
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym'])
             ->findOrFail($id);
 
         // Get PT packages from related gyms
@@ -160,7 +161,8 @@ class TrainerApiController extends Controller
                 'name' => $trainer->name,
                 'role' => 'Personal Trainer',
                 'bio' => $trainer->ptDescriptions->first()->description ?? null,
-                'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
+                // 'image' => $trainer->ptImgUrls->first()?->img_url ?? null,
+                'image' => $trainer->userDetail->photo,
                 'images' => $trainer->ptImgUrls->pluck('img_url')->toArray(),
                 'phone_number' => $trainer->userDetail?->phone_number,
                 'gender' => $trainer->userDetail?->gender,

@@ -39,6 +39,7 @@ Route::prefix('auth')->group(function () {
 // ── Public (no auth) ──────────────────────────────────────────
 
 Route::get('/memberships', [MembershipApiController::class, 'index']);
+Route::get('/memberships/gyms', [MembershipApiController::class, 'listGym']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
 // PT packages for landing
 Route::get('/pt-packages', [PtPackageApiController::class, 'index']);
@@ -70,6 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::put('/users/me', [ProfileController::class, 'update']);
     Route::post('/uploads', [ProfileController::class, 'upload']);
+    Route::get('/members/me/pt-packages', [ProfileController::class, 'userPtPackages']);
+    Route::get('/members/me/pt-packages/plot-trainer', [ProfileController::class, 'plotTrainerToUserPtPackages']);
     // Role-specific profile endpoints for landing
     Route::get('/members/me', [AuthController::class, 'memberMe']);
 

@@ -4,8 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
+use App\Models\GymPt;
+use App\Models\MasterPtPackage;
+use App\Models\User;
+use App\Models\UserPtPackage;
+use App\Models\UserPtPackageMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -153,5 +159,63 @@ class ProfileController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function userPtPackages()
+    {
+        $userId = Auth::id();
+        $listUserPtPackageIds = UserPtPackageMember::where('user_id', $userId)->pluck('user_pt_package_id');
+        $userPtPackages = UserPtPackage::whereIn('id', $listUserPtPackageIds)->with('gym:id,name')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $userPtPackages,
+            'message' => 'User PT packages retrieved successfully',
+        ]);
+    }
+
+    public function plotTrainerToUserPtPackages(Request $request)
+    {
+        $request->validate([
+            'pt_id' => ['required', 'exists:users,id'],
+            'user_pt_package_id' => ['required', 'exists:user_pt_packages,id'],
+        ]);
+
+        $pt = User::role('Personal Trainer')->find($request->pt_id);
+        if (!$pt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trainer not found or does not have Personal Trainer role',
+            ], 404);
+        }
+        $ptGym = GymPt::where('pt_id', $pt->id)->first();
+        $userPtPackage = UserPtPackage::find($request->user_pt_package_id);
+
+        if ($userPtPackage->pt_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User PT package already has a trainer assigned',
+            ], 400);
+        }
+
+        $ptPackage = MasterPtPackage::where('id', $userPtPackage->pt_package_id)
+            ->where('gym_id', $ptGym->gym_id)
+            ->first();
+
+        if (!$ptPackage) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trainer is not associated with the gym of the PT package',
+            ], 400);
+        }
+
+        $userPtPackage->pt_id = $pt->id;
+        $userPtPackage->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => $userPtPackage,
+            'message' => 'Trainer successfully assigned to user PT package',
+        ]);
     }
 }
