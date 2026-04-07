@@ -343,7 +343,7 @@ class ManageUserController extends Controller
             ],
             'installment_pt_id' => ['nullable', 'exists:user_pt_package_instalments,id'],
             'promo_code' => 'nullable|string',
-            'trainer_id' => ['nullable', 'exists:users,id'],
+            // 'trainer_id' => ['nullable', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {

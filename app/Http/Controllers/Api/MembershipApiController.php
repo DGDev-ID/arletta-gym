@@ -43,6 +43,7 @@ class MembershipApiController extends Controller
             return [
                 'id' => $m->id,
                 'name' => $m->name,
+                'description' => $m->description,
                 'duration_in_days' => $m->duration_in_days,
                 'price' => $m->price,
                 'gym' => $m->gym ? [
