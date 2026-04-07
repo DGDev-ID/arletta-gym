@@ -9,13 +9,14 @@ use App\Models\User;
 use App\Models\UserGym;
 use App\Models\UserPtPackage;
 use App\Models\UserPtPackageInstalment;
+use App\Models\WABlastTemplate;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
 class UpdateStatusTransactionService
 {
-    public static function makeSuccess(Transaction $transaction, $adminId = null)
+    public static function makeSuccess(Transaction $transaction, $adminId = null, WhatsappBlastService $waBlastService)
     {
         DB::beginTransaction();
 
@@ -38,6 +39,26 @@ class UpdateStatusTransactionService
             ]);
 
             if ($transaction->transaction_type == "membership") {
+                // Kirim Invoice
+                try {
+                    $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_MEMBERSHIP')->firstOrFail();
+                    $userPhoneNumber = $transaction->user->userDetail->phone_number;
+                    $waBlastService->send(
+                        $userPhoneNumber,
+                        $waBlastTemplate->template_id,
+                        [
+                            '{CUST_NAME}' => $transaction->user->name,
+                            '{TRANSACTION_ID}' => $transaction->unique_id,
+                            '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
+                            '{MEMBERSHIP_DAYS}' => $transaction->sessions_or_days,
+                            '{TRANSACTION_TOTAL_PRICE}' => $transaction->total_price,
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    // Ignore
+                }
+
+
                 $membership = MasterMembership::findOrFail($transaction->membership_id);
                 $userGym = UserGym::where('gym_id', $membership->gym_id)
                     ->where('user_id', $transaction->user_id)->first();
