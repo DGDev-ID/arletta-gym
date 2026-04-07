@@ -115,6 +115,7 @@ class TransactionPerSessionController extends Controller
                     $trx->phone_number,
                     $waBlastTemplate->template_id,
                     [
+                        '{CUST_NAME}' => $trx->name,
                         '{TRANSACTION_DATE}' => $trx->updated_at->format('d M Y H:i'),
                         '{TRANSACTION_PRICE}' => 'Rp ' . number_format($trx->price, 0, ',', '.')
                     ]
