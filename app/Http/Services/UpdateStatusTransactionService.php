@@ -13,6 +13,7 @@ use App\Models\WABlastTemplate;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UpdateStatusTransactionService
 {
@@ -41,6 +42,7 @@ class UpdateStatusTransactionService
             if ($transaction->transaction_type == "membership") {
                 // Kirim Invoice
                 try {
+                    Log::info("Sending WA Blast for Transaction ID: {$transaction->unique_id}");
                     $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_MEMBERSHIP')->firstOrFail();
                     $userPhoneNumber = $transaction->user->userDetail->phone_number;
                     $waBlastService->send(
@@ -55,7 +57,7 @@ class UpdateStatusTransactionService
                         ]
                     );
                 } catch (\Exception $e) {
-                    // Ignore
+                    Log::error("Failed to send WA Blast for Transaction ID: {$transaction->unique_id}. Error: " . $e->getMessage());
                 }
 
 
