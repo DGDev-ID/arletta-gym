@@ -41,7 +41,7 @@ class MasterGymClassController extends Controller
             'benefits' => 'nullable|string',
             'default_capacity' => 'required|integer|min:1',
             'duration_minutes' => 'required|integer|min:1',
-            'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
             'is_active' => 'boolean',
         ]);
 
@@ -87,7 +87,7 @@ class MasterGymClassController extends Controller
             'benefits' => 'nullable|string',
             'default_capacity' => 'required|integer|min:1',
             'duration_minutes' => 'required|integer|min:1',
-            'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'image_url' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
             'is_active' => 'boolean',
         ]);
 
