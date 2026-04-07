@@ -81,9 +81,14 @@ class S3Helper
         }
 
         imagewebp($image, $tempPath, 80);
-
         imagedestroy($image);
 
+        Storage::disk('local')->put(
+            "temp/{$fileName}",
+            file_get_contents($tempPath)
+        );
+
+        unlink($tempPath);
         return $fileName;
     }
 
