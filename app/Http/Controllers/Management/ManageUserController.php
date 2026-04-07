@@ -253,11 +253,18 @@ class ManageUserController extends Controller
             ];
 
             if ($request->hasFile('photo')) {
-                // Delete old photo if exists
-                if ($user->userDetail?->photo) {
-                    Storage::disk('public')->delete($user->userDetail->photo);
-                }
-                $detailData['photo'] = $request->file('photo')->store('uploads/avatar', 'public');
+                $file = $request->file('photo');
+
+                $tempFileName = S3Helper::storeFileTemp($file);
+                $s3Path = S3Helper::storeFileToS3("user-profile", $tempFileName);
+                $url = S3Helper::getUrlFileS3("user-profile", $tempFileName);
+
+                S3Helper::removeFileTemp($tempFileName);
+
+                $user->userDetail()->update([
+                    'photo' => $url,
+                ]);
+                $detailData['photo'] = $url;
             }
 
             $user->userDetail()->updateOrCreate(
