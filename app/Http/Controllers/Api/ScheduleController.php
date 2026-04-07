@@ -267,7 +267,7 @@ class ScheduleController extends Controller
         // Try to determine gym_class_id if not provided: prefer a class named 'Personal Training' in trainer's gyms
         $gymClassId = $validated['gym_class_id'] ?? null;
         if (!$gymClassId) {
-            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('user_id', $trainerId))->pluck('id');
+            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('pt_id', $trainerId))->pluck('id');
             $found = \App\Models\GymClass::whereIn('gym_id', $trainerGyms)
                 ->where(function ($q) {
                     $q->where('name', 'like', '%Personal%')
@@ -279,7 +279,7 @@ class ScheduleController extends Controller
 
         // If still not found, pick any active class in trainer's first gym (best-effort)
         if (!$gymClassId) {
-            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('user_id', $trainerId))->pluck('id');
+            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('pt_id', $trainerId))->pluck('id');
             $found = \App\Models\GymClass::whereIn('gym_id', $trainerGyms)->first();
             $gymClassId = $found?->id;
         }
