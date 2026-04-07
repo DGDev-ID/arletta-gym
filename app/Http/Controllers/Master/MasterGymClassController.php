@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\GymClass;
 use App\Models\MasterGym;
@@ -27,7 +28,7 @@ class MasterGymClassController extends Controller
         return Inertia::render('Master/GymClass/Create', [
             'gyms' => MasterGym::select('id', 'name')->get(),
         ]);
-    } 
+    }
 
     public function store(Request $request)
     {
@@ -45,7 +46,14 @@ class MasterGymClassController extends Controller
         ]);
 
         if ($request->hasFile('image_url')) {
-            $validated['image_url'] = $request->file('image_url')->store('gym-classes', 'public');
+            $file = $request->file('file');
+
+            $tempFileName = S3Helper::storeFileTemp($file);
+            $s3Path = S3Helper::storeFileToS3("gym-class", $tempFileName);
+            $url = S3Helper::getUrlFileS3("gym-class", $tempFileName);
+
+            S3Helper::removeFileTemp($tempFileName);
+            $validated['image_url'] = $url;
         }
 
         // Parse benefits textarea (one per line) to JSON array
@@ -84,7 +92,14 @@ class MasterGymClassController extends Controller
         ]);
 
         if ($request->hasFile('image_url')) {
-            $validated['image_url'] = $request->file('image_url')->store('gym-classes', 'public');
+            $file = $request->file('file');
+
+            $tempFileName = S3Helper::storeFileTemp($file);
+            $s3Path = S3Helper::storeFileToS3("gym-class", $tempFileName);
+            $url = S3Helper::getUrlFileS3("gym-class", $tempFileName);
+
+            S3Helper::removeFileTemp($tempFileName);
+            $validated['image_url'] = $url;
         } else {
             unset($validated['image_url']);
         }
