@@ -39,8 +39,8 @@ Route::prefix('auth')->group(function () {
 // ── Public (no auth) ──────────────────────────────────────────
 
 Route::get('/memberships', [MembershipApiController::class, 'index']);
-Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
 Route::get('/memberships/gyms', [MembershipApiController::class, 'listGym']);
+Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
 // PT packages for landing
 Route::get('/pt-packages', [PtPackageApiController::class, 'index']);
 Route::get('/pt-packages/{id}', [PtPackageApiController::class, 'show']);
