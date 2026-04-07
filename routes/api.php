@@ -40,6 +40,7 @@ Route::prefix('auth')->group(function () {
 
 Route::get('/memberships', [MembershipApiController::class, 'index']);
 Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
+Route::get('/memberships/gyms', [MembershipApiController::class, 'listGym']);
 // PT packages for landing
 Route::get('/pt-packages', [PtPackageApiController::class, 'index']);
 Route::get('/pt-packages/{id}', [PtPackageApiController::class, 'show']);
