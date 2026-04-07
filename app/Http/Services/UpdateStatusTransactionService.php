@@ -48,7 +48,7 @@ class UpdateStatusTransactionService
 
                     $totalPrice = $transaction->total_price;
                     $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
-                    
+
                     $waBlastService->send(
                         $userPhoneNumber,
                         $waBlastTemplate->template_id,
@@ -96,6 +96,30 @@ class UpdateStatusTransactionService
             }
 
             if ($transaction->transaction_type == "full_pt") {
+                try {
+                    Log::info("Sending WA Blast for Transaction ID: {$transaction->unique_id}");
+                    $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_PERSONAL_TRAINER')->firstOrFail();
+                    $userPhoneNumber = $transaction->user->userDetail->phone_number;
+
+                    $totalPrice = $transaction->total_price;
+                    $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
+
+                    $waBlastService->send(
+                        $userPhoneNumber,
+                        $waBlastTemplate->template_id,
+                        [
+                            '{CUST_NAME}' => $transaction->user->name,
+                            '{TRANSACTION_ID}' => $transaction->unique_id,
+                            '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
+                            '{PAYMENT_TYPE}' => 'Full Payment',
+                            '{TRX_DURATION}' => $transaction->sessions_or_days,
+                            '{TRANSACTION_TOTAL_PRICE}' => $rupiahFormat
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Log::error("Failed to send WA Blast for Transaction ID: {$transaction->unique_id}. Error: " . $e->getMessage());
+                }
+
                 $ptPackage = MasterPtPackage::findOrFail($transaction->full_pt_id);
                 $userPtPackage = UserPtPackage::create([
                     'pt_package_id' => $ptPackage->id,
@@ -109,6 +133,30 @@ class UpdateStatusTransactionService
             }
 
             if ($transaction->transaction_type == "installment_pt") {
+                try {
+                    Log::info("Sending WA Blast for Transaction ID: {$transaction->unique_id}");
+                    $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_PERSONAL_TRAINER')->firstOrFail();
+                    $userPhoneNumber = $transaction->user->userDetail->phone_number;
+
+                    $totalPrice = $transaction->total_price;
+                    $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
+
+                    $waBlastService->send(
+                        $userPhoneNumber,
+                        $waBlastTemplate->template_id,
+                        [
+                            '{CUST_NAME}' => $transaction->user->name,
+                            '{TRANSACTION_ID}' => $transaction->unique_id,
+                            '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
+                            '{PAYMENT_TYPE}' => 'Down Payment',
+                            '{TRX_DURATION}' => $transaction->sessions_or_days,
+                            '{TRANSACTION_TOTAL_PRICE}' => $rupiahFormat
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Log::error("Failed to send WA Blast for Transaction ID: {$transaction->unique_id}. Error: " . $e->getMessage());
+                }
+
                 $installment = UserPtPackageInstalment::findOrFail($transaction->installment_pt_id);
                 $installment->update(['status' => 'paid']);
 
