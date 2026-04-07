@@ -99,6 +99,7 @@ class PaymentService
                 if (!isset($validated['installment_pt_id'])) {
                     $userPtPackage = UserPtPackage::create([
                         'pt_package_id' => $item->id,
+                        'pt_id' => !empty($validated['trainer_id']) ? $validated['trainer_id'] : null,
                         'sessions_remaining' => $totalSessionsOrDays,
                         'status' => 'instalment'
                     ]);
@@ -124,6 +125,7 @@ class PaymentService
             $finalInstallmentId = ($trxType === 'installment_pt') ? $installmentPtId : null;
             $transaction = Transaction::create([
                 'user_id' => $user->id,
+                'trainer_id' => (!$isMembership && !empty($validated['trainer_id'])) ? $validated['trainer_id'] : null,
                 'method' => $trxMapping[$validated['payment_method']]['m'],
                 'method_midtrans_detail' => $trxMapping[$validated['payment_method']]['d'],
                 'transaction_type' => $trxType,
@@ -288,6 +290,7 @@ class PaymentService
             'payment_type' => ['nullable', Rule::requiredIf($data['transaction_type'] === 'pt'), Rule::in(['full_payment', 'dp_payment'])],
             'dp_percent' => ['nullable', Rule::requiredIf(isset($data['payment_type']) && $data['payment_type'] === 'dp_payment'), 'numeric', 'min:0', 'max:100'],
             'promo_code' => 'nullable|string',
+            'trainer_id' => ['nullable', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {

@@ -445,6 +445,7 @@ class AuthController extends Controller
 
         $response = [
             'trainer' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->userDetail?->phone_number,

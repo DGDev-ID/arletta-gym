@@ -67,6 +67,7 @@ class PaymentController extends Controller
             'dp_percent' => 'nullable|required_if:payment_type,dp_payment|numeric|min:0|max:100',
             'promo_code' => 'nullable|string',
             'signature_data' => 'nullable|string',
+            'trainer_id' => 'nullable|exists:users,id',
         ]);
 
         $data['user_id'] = $user->id;

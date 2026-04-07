@@ -50,6 +50,12 @@ watch(
     }, 300)
 );
 
+const isMembershipActive = (user: any): boolean => {
+    const gym = user.user_gyms?.[0];
+    if (!gym || !gym.membership_end_at) return false;
+    return new Date(gym.membership_end_at) >= new Date(new Date().toDateString());
+};
+
 const getRoleBadgeClass = (roleName: string) => {
     switch (roleName) {
         case 'Super Admin': return 'bg-red-100 text-red-800 border-red-200';
@@ -108,6 +114,7 @@ const getRoleBadgeClass = (roleName: string) => {
                                     <th scope="col" class="px-6 py-4">User Details</th>
                                     <th scope="col" class="px-6 py-4">Role</th>
                                     <th scope="col" class="px-6 py-4">Joined Date</th>
+                                    <th scope="col" class="px-6 py-4">Status Membership</th>
                                     <th scope="col" class="px-6 py-4">
                                         <div class="flex justify-center items-center">Action</div>
                                     </th>
@@ -147,6 +154,20 @@ const getRoleBadgeClass = (roleName: string) => {
                                         {{ new Date(user.created_at).toLocaleDateString() }}
                                     </td>
 
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <template v-if="hasUserRole(user)">
+                                            <span v-if="isMembershipActive(user)"
+                                                class="px-2 py-1 inline-flex text-[10px] uppercase tracking-wider font-bold rounded-full border bg-green-100 text-green-800 border-green-200">
+                                                Berlangganan
+                                            </span>
+                                            <span v-else
+                                                class="px-2 py-1 inline-flex text-[10px] uppercase tracking-wider font-bold rounded-full border bg-red-100 text-red-800 border-red-200">
+                                                Tidak Berlangganan
+                                            </span>
+                                        </template>
+                                        <span v-else class="text-muted-foreground text-xs italic">-</span>
+                                    </td>
+
                                     <td>
                                         <div class="flex justify-center items-center">
                                             <Link :href="`/management/user/${user.id}`"
@@ -163,7 +184,7 @@ const getRoleBadgeClass = (roleName: string) => {
                                 </tr>
 
                                 <tr v-if="users.data.length === 0">
-                                    <td colspan="3" class="px-6 py-12 text-center text-muted-foreground">
+                                    <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
                                         <div class="flex flex-col items-center">
                                             <svg class="w-12 h-12 text-muted-foreground/50 mb-3" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
