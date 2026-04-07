@@ -30,6 +30,17 @@ class BookingController extends Controller
         $query = Booking::where('user_id', $request->user()->id)
             ->with(['classSchedule.gymClass', 'classSchedule.trainer']);
 
+        // Only show bookings for upcoming schedules (not yet passed)
+        $query->whereHas('classSchedule', function ($q) {
+            $q->where(function ($q2) {
+                $q2->where('date', '>', now()->toDateString())
+                   ->orWhere(function ($q3) {
+                       $q3->where('date', now()->toDateString())
+                          ->where('end_time', '>', now()->format('H:i:s'));
+                   });
+            });
+        });
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

@@ -15,8 +15,17 @@ use App\Http\Controllers\Transaction\HistoryTransactionController;
 use App\Http\Controllers\Transaction\TransactionPerSessionController;
 use App\Http\Controllers\Transaction\TransactionPosController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+
+// Serve files from public storage (fallback when nginx symlink doesn't work)
+Route::get('/storage/{path}', function (string $path) {
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return response()->file(Storage::disk('public')->path($path));
+})->where('path', '.*')->name('storage.serve');
 
 Route::get('/', function () {
     return redirect()->route('dashboard');

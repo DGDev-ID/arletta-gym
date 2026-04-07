@@ -12,6 +12,58 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Waitlist', description: 'Waitlist & online class fallback')]
 class WaitlistController extends Controller
 {
+    #[OA\Get(
+        path: '/api/waitlist',
+        tags: ['Waitlist'],
+        summary: 'Get current user\'s waitlist entries',
+        security: [['sanctum' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'List of waitlist entries',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'data', type: 'array', items: new OA\Items(type: 'object')),
+                    ]
+                )
+            ),
+        ]
+    )]
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $entries = WaitlistEntry::where('user_id', $user->id)
+            ->where('status', 'waiting')
+            ->with(['classSchedule.gymClass', 'classSchedule.trainer'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $data = $entries->map(function (WaitlistEntry $entry) {
+            $schedule = $entry->classSchedule;
+            return [
+                'id' => $entry->id,
+                'position' => $entry->position,
+                'status' => $entry->status,
+                'created_at' => $entry->created_at?->toISOString(),
+                'schedule' => $schedule ? [
+                    'id' => $schedule->id,
+                    'class_name' => $schedule->gymClass?->name,
+                    'category' => $schedule->gymClass?->category,
+                    'trainer_name' => $schedule->trainer?->name,
+                    'date' => $schedule->date?->toDateString(),
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'location' => $schedule->location,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
     #[OA\Post(
         path: '/api/waitlist',
         tags: ['Waitlist'],

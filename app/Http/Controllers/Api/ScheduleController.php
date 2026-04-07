@@ -39,6 +39,15 @@ class ScheduleController extends Controller
         $query = ClassSchedule::with(['gymClass', 'trainer.userDetail'])
             ->where('is_cancelled', false);
 
+        // Exclude past schedules (date+time already passed)
+        $query->where(function ($q) {
+            $q->where('date', '>', now()->toDateString())
+              ->orWhere(function ($q2) {
+                  $q2->where('date', now()->toDateString())
+                     ->where('end_time', '>', now()->format('H:i:s'));
+              });
+        });
+
         if ($request->filled('date')) {
             $query->whereDate('date', $request->date);
         }
@@ -167,7 +176,13 @@ class ScheduleController extends Controller
             'schedules' => function ($q) {
                 // Load only upcoming non-cancelled schedules for spot/trainer info
                 $q->where('is_cancelled', false)
-                  ->where('date', '>=', now()->toDateString())
+                  ->where(function ($q2) {
+                      $q2->where('date', '>', now()->toDateString())
+                         ->orWhere(function ($q3) {
+                             $q3->where('date', now()->toDateString())
+                                ->where('end_time', '>', now()->format('H:i:s'));
+                         });
+                  })
                   ->orderBy('date')
                   ->orderBy('start_time')
                   ->with('trainer:id,name')

@@ -324,6 +324,7 @@ class AuthController extends Controller
         $membershipInfo = null;
         if ($userGym) {
             $membershipInfo = [
+                'gym_id' => $userGym->gym_id,
                 'gym_name' => $userGym->gym->name ?? null,
                 'membership_end_at' => $userGym->membership_end_at,
                 'is_active' => $userGym->membership_end_at && now()->lt($userGym->membership_end_at),
@@ -333,7 +334,14 @@ class AuthController extends Controller
         // Upcoming classes / bookings
         $bookings = Booking::where('user_id', $user->id)
             ->whereHas('classSchedule', function ($q) {
-                $q->whereDate('date', '>=', now()->toDateString())->where('is_cancelled', false);
+                $q->where('is_cancelled', false)
+                  ->where(function ($q2) {
+                      $q2->where('date', '>', now()->toDateString())
+                         ->orWhere(function ($q3) {
+                             $q3->where('date', now()->toDateString())
+                                ->where('end_time', '>', now()->format('H:i:s'));
+                         });
+                  });
             })
             ->with(['classSchedule.gymClass', 'classSchedule.trainer'])
             ->orderByDesc('created_at')
@@ -595,12 +603,17 @@ class AuthController extends Controller
     {
         $user->load(['userDetail', 'roles']);
 
+        // Prioritise 'Personal Trainer' over 'User' — a PT has both roles
+        $roleNames = $user->roles->pluck('name');
+        $role = $roleNames->contains('Personal Trainer') ? 'Personal Trainer' : ($roleNames->first() ?? 'User');
+
         return [
             'id' => $user->id,
             'unique_id' => $user->unique_id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->roles->pluck('name')->first() ?? 'User',
+            'role' => $role,
+            'roles' => $roleNames->values()->all(),
             'phone_number' => $user->userDetail?->phone_number,
             'nik' => $user->userDetail?->nik,
             'birth_place' => $user->userDetail?->birth_place,
