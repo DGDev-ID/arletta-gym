@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Management;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
@@ -76,7 +77,7 @@ class ManageUserController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'nullable|string|max:20',
-            'photo' => 'nullable|image|max:5120|mimes:jpeg,png,jpg,gif',
+            'photo' => 'nullable|image|max:30720|mimes:jpeg,png,jpg,gif',
             'emergency_name' => 'nullable|string|max:255',
             'emergency_phone' => 'nullable|string|max:20',
             'emergency_relation' => 'nullable|string|max:100',
@@ -93,7 +94,11 @@ class ManageUserController extends Controller
 
             $photoPath = null;
             if ($request->hasFile('photo')) {
-                $photoPath = $request->file('photo')->store('uploads/avatar', 'public');
+                $file = $request->file('photo');
+                $tempFileName = S3Helper::storeFileTemp($file);
+                $s3Path = S3Helper::storeFileToS3("user-profile", $tempFileName);
+                $photoPath = S3Helper::getUrlFileS3("user-profile", $tempFileName);
+                S3Helper::removeFileTemp($tempFileName);
             }
 
             $user->userDetail()->create([
@@ -218,7 +223,7 @@ class ManageUserController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'nullable|string|max:20',
-            'photo' => 'nullable|image|max:5120|mimes:jpeg,png,jpg,gif',
+            'photo' => 'nullable|image|max:30720|mimes:jpeg,png,jpg,gif',
             'emergency_name' => 'nullable|string|max:255',
             'emergency_phone' => 'nullable|string|max:20',
             'emergency_relation' => 'nullable|string|max:100',
@@ -248,11 +253,18 @@ class ManageUserController extends Controller
             ];
 
             if ($request->hasFile('photo')) {
-                // Delete old photo if exists
-                if ($user->userDetail?->photo) {
-                    Storage::disk('public')->delete($user->userDetail->photo);
-                }
-                $detailData['photo'] = $request->file('photo')->store('uploads/avatar', 'public');
+                $file = $request->file('photo');
+
+                $tempFileName = S3Helper::storeFileTemp($file);
+                $s3Path = S3Helper::storeFileToS3("user-profile", $tempFileName);
+                $url = S3Helper::getUrlFileS3("user-profile", $tempFileName);
+
+                S3Helper::removeFileTemp($tempFileName);
+
+                $user->userDetail()->update([
+                    'photo' => $url,
+                ]);
+                $detailData['photo'] = $url;
             }
 
             $user->userDetail()->updateOrCreate(

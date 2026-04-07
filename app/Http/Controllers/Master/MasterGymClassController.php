@@ -27,7 +27,7 @@ class MasterGymClassController extends Controller
         return Inertia::render('Master/GymClass/Create', [
             'gyms' => MasterGym::select('id', 'name')->get(),
         ]);
-    }
+    } 
 
     public function store(Request $request)
     {

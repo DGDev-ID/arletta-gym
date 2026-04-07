@@ -43,7 +43,7 @@ class AccountVerificationController extends Controller
 
         try {
             $waBlastTemplate = WABlastTemplate::where('template_name', 'ACCOUNT_VERIFICATION')->firstOrFail();
-            $this->waService->send(
+            $res = $this->waService->send(
                 $user->userDetail->phone_number,
                 $waBlastTemplate->template_id,
                 [
@@ -54,7 +54,8 @@ class AccountVerificationController extends Controller
             );
 
             return response()->json([
-                'message' => 'Link verifikasi berhasil dikirim via WhatsApp'
+                'message' => 'Link verifikasi berhasil dikirim via WhatsApp',
+                'response' => $res
             ]);
         } catch (\Exception $e) {
             return response()->json([

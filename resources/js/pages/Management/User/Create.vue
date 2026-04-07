@@ -40,6 +40,11 @@ const onPhotoChange = (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (!target.files?.length) return;
     const file = target.files[0];
+    if (file.size > 30 * 1024 * 1024) {
+        alert('Ukuran foto maksimal 30MB. Silakan kompres atau pilih foto lain.');
+        target.value = '';
+        return;
+    }
     form.photo = file;
     photoPreview.value = URL.createObjectURL(file);
 };
