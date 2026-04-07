@@ -45,6 +45,10 @@ class UpdateStatusTransactionService
                     Log::info("Sending WA Blast for Transaction ID: {$transaction->unique_id}");
                     $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_MEMBERSHIP')->firstOrFail();
                     $userPhoneNumber = $transaction->user->userDetail->phone_number;
+
+                    $totalPrice = $transaction->total_price;
+                    $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
+                    
                     $waBlastService->send(
                         $userPhoneNumber,
                         $waBlastTemplate->template_id,
@@ -53,7 +57,7 @@ class UpdateStatusTransactionService
                             '{TRANSACTION_ID}' => $transaction->unique_id,
                             '{TRANSACTION_DATE}' => $transaction->updated_at->format('d M Y H:i'),
                             '{MEMBERSHIP_DAYS}' => $transaction->sessions_or_days,
-                            '{TRANSACTION_TOTAL_PRICE}' => 'Rp ' . number_format($transaction->total_price, 0, ',', '.')
+                            '{TRANSACTION_TOTAL_PRICE}' => $rupiahFormat
                         ]
                     );
                 } catch (\Exception $e) {
