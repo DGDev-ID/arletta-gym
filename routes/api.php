@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::put('/users/me', [ProfileController::class, 'update']);
     Route::post('/uploads', [ProfileController::class, 'upload']);
+    Route::get('/members/me/pt-packages', [ProfileController::class, 'userPtPackages']);
     // Role-specific profile endpoints for landing
     Route::get('/members/me', [AuthController::class, 'memberMe']);
 
