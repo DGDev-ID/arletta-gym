@@ -69,7 +69,7 @@ class TrainerApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls']);
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'userDetail']);
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -125,7 +125,7 @@ class TrainerApiController extends Controller
     public function show(int $id): JsonResponse
     {
         $trainer = User::role('Personal Trainer')
-            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym'])
+            ->with(['userDetail', 'ptProfile', 'ptDescriptions', 'ptImgUrls', 'gymPts.gym', 'userDetail'])
             ->findOrFail($id);
 
         // Get PT packages from related gyms
