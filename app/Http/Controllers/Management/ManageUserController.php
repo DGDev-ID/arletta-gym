@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
 use App\Http\Services\WhatsappBlastService;
+use App\Jobs\SendWhatsappBlast;
 use App\Models\MasterGym;
 use App\Models\MembershipPromo;
 use App\Models\PtPackagePromo;
@@ -17,6 +18,7 @@ use App\Models\UserGym;
 use App\Models\UserPtPackage;
 use App\Models\UserPtPackageInstalment;
 use App\Models\UserPtPackageMember;
+use App\Models\WABlastTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -482,6 +484,37 @@ class ManageUserController extends Controller
         $transactionFreezing->save();
 
         if ($validated['status'] === 'success') {
+            // Send OTP
+            try {
+                $custName = $transactionFreezing->user->name;
+                $gymName = $transactionFreezing->gym->name;
+                $freezeDays = $transactionFreezing->day_freeze;
+                $freezeStartAt = UserGym::where('user_id', $transactionFreezing->user_id)
+                    ->where('gym_id', $transactionFreezing->gym_id)
+                    ->first()
+                    ->freezed_at
+                    ->format('d M Y');
+                $freezeEndAt = UserGym::where('user_id', $transactionFreezing->user_id)
+                    ->where('gym_id', $transactionFreezing->gym_id)
+                    ->first()
+                    ->freezed_end_at
+                    ->format('d M Y');
+
+                $waBlastTemplate = WABlastTemplate::where('template_name', 'FREEZE_MEMBERSHIP')->first();
+                SendWhatsappBlast::dispatch(
+                    $transactionFreezing->user->userDetail->phone_number,
+                    $waBlastTemplate->template_id,
+                    [
+                        '{CUST_NAME}' => $custName,
+                        '{GYM_NAME}' => $gymName,
+                        '{FREEZE_STARTED_AT}' => $freezeStartAt,
+                        '{FREEZE_ENDED_AT}' => $freezeEndAt,
+                        '{FREEZE_DAYS}' => $freezeDays,
+                    ]
+                );
+            } catch (\Throwable $th) {
+            }
+
             $userGym = UserGym::where('user_id', $transactionFreezing->user_id)
                 ->where('gym_id', $transactionFreezing->gym_id)
                 ->first();
