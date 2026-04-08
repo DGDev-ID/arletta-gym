@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('app:check-freezing-user-gyms')->daily();
+Schedule::command('app:check-freezing-user-gyms')->everymin();
 Schedule::command('app:check-membership-end-reminder')->daily();

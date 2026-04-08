@@ -22,15 +22,22 @@ class CheckMembershipEndReminder extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Check and send membership end reminders';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
+        Log::info('Start checking membership end reminder');
+        Log::info('now: ' . now()->toDateTimeString());
         $membershipEndReminders = UserGym::whereNull('freezed_at')->whereNull('freezed_end_at')
             ->where('membership_end_at', now()->addDays(7)->toDateString())->get();
+
+        if ($membershipEndReminders->isEmpty()) {
+            Log::info('No membership end reminder to send');
+            return;
+        }
 
         $waTemplate = WABlastTemplate::where('template_name', 'MEMBERSHIP_END_REMINDER')->first();
         foreach ($membershipEndReminders as $userGym) {
