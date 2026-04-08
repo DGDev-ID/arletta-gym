@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SendWhatsappBlast implements ShouldQueue
 {
@@ -16,6 +17,15 @@ class SendWhatsappBlast implements ShouldQueue
     protected $to;
     protected $templateId;
     protected $variables;
+
+    public $tries = 3;
+
+    public $timeout = 30;
+
+    public function backoff()
+    {
+        return [10, 30, 60]; 
+    }
 
     public function __construct($to, $templateId, $variables = [])
     {
@@ -31,5 +41,15 @@ class SendWhatsappBlast implements ShouldQueue
             $this->templateId,
             $this->variables
         );
+    }
+
+    public function failed(\Throwable $exception)
+    {
+        Log::error('Whatsapp blast failed', [
+            'to' => $this->to,
+            'template_id' => $this->templateId,
+            'variables' => $this->variables,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }
