@@ -56,7 +56,7 @@ class WhatsappBlastService
         if ($httpCode === 200) {
             return 200;
         }
-
+        $response = $httpCode != 500 ? $response : 'Internal Server Error';
         Log::error("Failed to send WhatsApp blast. HTTP Code: {$httpCode}. Response: {$response}");
         throw new Exception("Request failed with status {$httpCode}. Response: {$response}");
     }
