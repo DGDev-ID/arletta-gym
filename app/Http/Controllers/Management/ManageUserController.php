@@ -484,6 +484,14 @@ class ManageUserController extends Controller
         $transactionFreezing->save();
 
         if ($validated['status'] === 'success') {
+            $userGym = UserGym::where('user_id', $transactionFreezing->user_id)
+                ->where('gym_id', $transactionFreezing->gym_id)
+                ->first();
+
+            $userGym->freezed_at = now();
+            $userGym->freezed_end_at = now()->addDays($transactionFreezing->day_freeze);
+            $userGym->save();
+
             // Send OTP
             try {
                 $custName = $transactionFreezing->user->name;
@@ -514,14 +522,6 @@ class ManageUserController extends Controller
                 );
             } catch (\Throwable $th) {
             }
-
-            $userGym = UserGym::where('user_id', $transactionFreezing->user_id)
-                ->where('gym_id', $transactionFreezing->gym_id)
-                ->first();
-
-            $userGym->freezed_at = now();
-            $userGym->freezed_end_at = now()->addDays($transactionFreezing->day_freeze);
-            $userGym->save();
         }
 
         return response()->json(['message' => 'Status transaction freezing berhasil diperbarui.']);
