@@ -2,6 +2,7 @@
 
 namespace App\Http\Services;
 
+use App\Jobs\SendWhatsappBlast;
 use App\Models\MasterMembership;
 use App\Models\MasterPtPackage;
 use App\Models\Transaction;
@@ -49,7 +50,7 @@ class UpdateStatusTransactionService
                     $totalPrice = $transaction->total_price;
                     $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
 
-                    $waBlastService->send(
+                    SendWhatsappBlast::dispatch(
                         $userPhoneNumber,
                         $waBlastTemplate->template_id,
                         [
@@ -104,7 +105,7 @@ class UpdateStatusTransactionService
                     $totalPrice = $transaction->total_price;
                     $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
 
-                    $waBlastService->send(
+                    SendWhatsappBlast::dispatch(
                         $userPhoneNumber,
                         $waBlastTemplate->template_id,
                         [
@@ -141,7 +142,7 @@ class UpdateStatusTransactionService
                     $totalPrice = $transaction->total_price;
                     $rupiahFormat = 'Rp ' . number_format((float)$totalPrice, 0, ',', '.');
 
-                    $waBlastService->send(
+                    SendWhatsappBlast::dispatch(
                         $userPhoneNumber,
                         $waBlastTemplate->template_id,
                         [

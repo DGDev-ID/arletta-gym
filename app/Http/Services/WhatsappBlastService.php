@@ -3,6 +3,7 @@
 namespace App\Http\Services;
 
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class WhatsappBlastService
 {
@@ -56,6 +57,7 @@ class WhatsappBlastService
             return 200;
         }
 
+        Log::error("Failed to send WhatsApp blast. HTTP Code: {$httpCode}. Response: {$response}");
         throw new Exception("Request failed with status {$httpCode}. Response: {$response}");
     }
 }

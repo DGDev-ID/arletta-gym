@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\WhatsappBlastService as ServicesWhatsappBlastService;
+use App\Jobs\SendWhatsappBlast;
 use App\Models\HealthPolicyResponse;
 use App\Models\User;
 use App\Models\UserGym;
@@ -156,7 +157,7 @@ class AuthController extends Controller
 
         try {
             $waBlastTemplate = WABlastTemplate::where('template_name', 'ACCOUNT_VERIFICATION')->firstOrFail();
-            $waService->send(
+            SendWhatsappBlast::dispatch(
                 $user->userDetail->phone_number,
                 $waBlastTemplate->template_id,
                 [

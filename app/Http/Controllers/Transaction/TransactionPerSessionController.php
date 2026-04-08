@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\WhatsappBlastService;
+use App\Jobs\SendWhatsappBlast;
 use Illuminate\Http\Request;
 use App\Models\MasterGym;
 use App\Models\GymAdmin;
@@ -110,8 +111,7 @@ class TransactionPerSessionController extends Controller
             Log::info("Sending WA Blast for Transaction ID: {$trx->unique_id}");
             try {
                 $waBlastTemplate = WABlastTemplate::where('template_name', 'INVOICE_MEMBERSHIP_PER_SESSION')->firstOrFail();
-                $waBlastService = new WhatsappBlastService();
-                $waBlastService->send(
+                SendWhatsappBlast::dispatch(
                     $trx->phone_number,
                     $waBlastTemplate->template_id,
                     [
@@ -122,7 +122,6 @@ class TransactionPerSessionController extends Controller
                 );
             } catch (\Exception $e) {
                 // Log error but don't fail the transaction update
-                Log::error("Failed to send WA Blast for TransactionPerSession ID: {$trx->id}. Error: " . $e->getMessage());
             }
         }
 
