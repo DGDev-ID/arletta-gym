@@ -10,8 +10,10 @@ use App\Http\Services\WhatsappBlastService;
 use App\Models\MasterGym;
 use App\Models\MembershipPromo;
 use App\Models\PtPackagePromo;
+use App\Models\TransactionFreezing;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserGym;
 use App\Models\UserPtPackage;
 use App\Models\UserPtPackageInstalment;
 use App\Models\UserPtPackageMember;
@@ -146,11 +148,21 @@ class ManageUserController extends Controller
         $listInstalments = UserPtPackage::whereIn('id', $userPtPackageIds)->where('status', 'instalment')->pluck('id');
         $pendingInstalments = UserPtPackageInstalment::whereIn('user_pt_package_id', $listInstalments)->where('status', 'unpaid')->get();
 
+        $pendingFreezings = TransactionFreezing::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->with('gym')
+            ->latest()
+            ->get();
+
+        $userGyms = UserGym::where('user_id', $user->id)->with('gym')->get();
+
         return Inertia::render('Management/User/Show', [
             'user' => $user,
             'gyms' => $gyms,
             'pendingTransactions' => $pendingTransactions,
-            'pendingInstallments' => $pendingInstalments
+            'pendingInstallments' => $pendingInstalments,
+            'pendingFreezings' => $pendingFreezings,
+            'userGyms' => $userGyms,
         ]);
     }
 
@@ -369,6 +381,118 @@ class ManageUserController extends Controller
         return response()->json($res);
     }
 
+
+    public function freeze(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => ['required', 'exists:users,id'],
+            'gym_id' => ['required', 'exists:user_gyms,gym_id'],
+            'freeze_count' => ['required', 'numeric', 'min:30', function ($attribute, $value, $fail) {
+                if ($value % 30 !== 0) {
+                    $fail('Freeze count harus kelipatan 30.');
+                }
+            }],
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $validated = $validator->validated();
+
+        $userGym = UserGym::where('user_id', $validated['user_id'])
+            ->where('gym_id', $validated['gym_id'])
+            ->first();
+
+        if (!$userGym) {
+            return response()->json(['message' => 'User tidak terdaftar di gym ini.'], 404);
+        }
+
+        if ($userGym->freezed_at !== null) {
+            return response()->json(['message' => 'User di gym ini sedang di freeze.'], 422);
+        }
+
+        $gym = MasterGym::find($validated['gym_id']);
+        $month = $validated['freeze_count'] / 30;
+        $totalPrice = $gym->freeze_price * $month;
+
+        $transactionFreezing = TransactionFreezing::create([
+            'user_id' => $validated['user_id'],
+            'gym_id' => $validated['gym_id'],
+            'total_price' => $totalPrice,
+            'day_freeze' => $validated['freeze_count'],
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Transaction freezing berhasil dibuat.',
+            'transaction_freezing' => $transactionFreezing,
+        ]);
+    }
+
+    public function unfreeze(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => ['required', 'exists:users,id'],
+            'gym_id' => ['required'],
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $validated = $validator->validated();
+
+        $userGym = UserGym::where('user_id', $validated['user_id'])
+            ->where('gym_id', $validated['gym_id'])
+            ->first();
+
+        if (!$userGym) {
+            return response()->json(['message' => 'User tidak terdaftar di gym ini.'], 404);
+        }
+
+        if ($userGym->freezed_at === null) {
+            return response()->json(['message' => 'User di gym ini belum di freeze.'], 422);
+        }
+
+        $selisihHari = now()->diffInDays($userGym->freezed_at);
+        $userGym->membership_end_at = $userGym->membership_end_at->addDays($selisihHari);
+        $userGym->freezed_at = null;
+        $userGym->freezed_end_at = null;
+        $userGym->save();
+
+        return response()->json(['message' => 'User berhasil di-unfreeze.']);
+    }
+
+    public function updateTransactionFreezing(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'transaction_freezing_id' => ['required', 'exists:transaction_freezings,id'],
+            'status' => ['required', 'in:success,failed'],
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $validated = $validator->validated();
+
+        $transactionFreezing = TransactionFreezing::findOrFail($validated['transaction_freezing_id']);
+        $transactionFreezing->update(['status' => $validated['status']]);
+        $transactionFreezing->save();
+
+        if ($validated['status'] === 'success') {
+            $userGym = UserGym::where('user_id', $transactionFreezing->user_id)
+                ->where('gym_id', $transactionFreezing->gym_id)
+                ->first();
+
+            $userGym->freezed_at = now();
+            $userGym->freezed_end_at = now()->addDays($transactionFreezing->day_freeze);
+            $userGym->save();
+        }
+
+        return response()->json(['message' => 'Status transaction freezing berhasil diperbarui.']);
+    }
 
     public function ocr(Request $request)
     {
