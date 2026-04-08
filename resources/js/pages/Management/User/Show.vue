@@ -4,7 +4,7 @@ import axios from 'axios';
 import {
     Save, Lock, User as UserIcon, MapPin,
     Phone, Calendar, Loader2,
-    Download, CreditCard, Ticket, Dumbbell, Store, CheckCircle, XCircle, Clock, History, Heart, ImagePlus, Camera, X
+    Download, CreditCard, Ticket, Dumbbell, Store, CheckCircle, XCircle, Clock, History, Heart, ImagePlus, Camera, X, Snowflake, ThermometerSun
 } from 'lucide-vue-next';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import Heading from '@/components/Heading.vue';
@@ -37,8 +37,10 @@ interface Gym {
 const props = defineProps<{
     user: any,
     gyms: Gym[],
-    pendingTransactions: any[]
-    pendingInstallments: any[]
+    pendingTransactions: any[],
+    pendingInstallments: any[],
+    pendingFreezings: any[],
+    userGyms: any[],
 }>();
 
 const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>({});
@@ -338,6 +340,79 @@ const verifyPromo = async () => {
         alert("Kode promo berhasil dipasang!");
     } catch (e) {
         alert("Kode promo tidak valid untuk paket ini.");
+    }
+};
+
+// === FREEZING ===
+const freezeForm = ref({
+    gym_id: '' as string | number,
+    freeze_count: 30,
+});
+const isFreezingLoading = ref(false);
+
+const handleFreeze = async () => {
+    if (!freezeForm.value.gym_id) {
+        notyf.error('Silakan pilih gym terlebih dahulu.');
+        return;
+    }
+    if (!freezeForm.value.freeze_count || freezeForm.value.freeze_count % 30 !== 0) {
+        notyf.error('Jumlah hari freeze harus kelipatan 30.');
+        return;
+    }
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/freeze', {
+            user_id: props.user.id,
+            gym_id: freezeForm.value.gym_id,
+            freeze_count: freezeForm.value.freeze_count,
+        });
+        notyf.success('Transaction freezing berhasil dibuat.');
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses freeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
+    }
+};
+
+const handleUnfreeze = async (gymId: string | number) => {
+    if (!confirm('Apakah Anda yakin ingin meng-unfreeze user di gym ini?')) return;
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/unfreeze', {
+            user_id: props.user.id,
+            gym_id: gymId,
+        });
+        notyf.success('User berhasil di-unfreeze.');
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses unfreeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
+    }
+};
+
+const handleUpdateTransactionFreezing = async (id: number | string, status: 'success' | 'failed') => {
+    const label = status === 'success' ? 'MENYETUJUI' : 'MENOLAK';
+    if (!confirm(`Apakah Anda yakin ingin ${label} transaksi freeze ini?`)) return;
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/update-transaction-freezing', {
+            transaction_freezing_id: id,
+            status: status,
+        });
+        notyf.success(`Transaksi freeze berhasil ${status === 'success' ? 'disetujui' : 'ditolak'}.`);
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses transaksi freeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
     }
 };
 
@@ -1039,6 +1114,115 @@ const downloadSVG = () => {
                                     <Loader2 v-if="isGenerating" :size="14" class="animate-spin" />
                                     BAYAR SEKARANG
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Freezing Section -->
+                <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6 mt-8">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <Snowflake class="text-cyan-500" :size="20" />
+                            <h3 class="font-bold text-lg">Freeze Membership</h3>
+                        </div>
+                    </div>
+                    <hr class="border-muted" />
+
+                    <!-- User Gym Freeze Status -->
+                    <div v-if="userGyms.length > 0" class="space-y-3">
+                        <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Status Gym User</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div v-for="ug in userGyms" :key="ug.id"
+                                :class="ug.freezed_at ? 'border-cyan-300 bg-cyan-50/30' : 'border-muted'"
+                                class="p-4 border rounded-xl flex items-center justify-between">
+                                <div class="space-y-1">
+                                    <p class="font-bold text-sm">{{ ug.gym?.name || 'Gym #' + ug.gym_id }}</p>
+                                    <p class="text-xs text-muted-foreground">
+                                        Membership s/d: {{ ug.membership_end_at ? new Date(ug.membership_end_at).toLocaleDateString('id-ID') : '-' }}
+                                    </p>
+                                    <div v-if="ug.freezed_at" class="flex items-center gap-1 text-xs text-cyan-600 font-medium">
+                                        <Snowflake :size="12" />
+                                        Freeze sejak {{ new Date(ug.freezed_at).toLocaleDateString('id-ID') }}
+                                        s/d {{ ug.freezed_end_at ? new Date(ug.freezed_end_at).toLocaleDateString('id-ID') : '-' }}
+                                    </div>
+                                </div>
+                                <button v-if="ug.freezed_at" @click="handleUnfreeze(ug.gym_id)"
+                                    :disabled="isFreezingLoading"
+                                    class="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1">
+                                    <ThermometerSun :size="14" />
+                                    Unfreeze
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Freeze Form -->
+                    <div class="space-y-4">
+                        <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Buat Transaksi Freeze</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-muted-foreground">Pilih Gym</label>
+                                <select v-model="freezeForm.gym_id" class="w-full h-10 rounded-xl border px-3 text-sm">
+                                    <option value="" disabled>Pilih gym</option>
+                                    <option v-for="ug in userGyms.filter(u => !u.freezed_at)" :key="ug.gym_id" :value="ug.gym_id">
+                                        {{ ug.gym?.name || 'Gym #' + ug.gym_id }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-muted-foreground">Durasi Freeze (kelipatan 30 hari)</label>
+                                <Input type="number" v-model.number="freezeForm.freeze_count" min="30" step="30" class="rounded-xl" />
+                            </div>
+                            <button type="button" @click="handleFreeze" :disabled="isFreezingLoading"
+                                class="h-10 px-6 bg-cyan-600 text-white rounded-xl font-bold text-sm hover:bg-cyan-700 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                                <Loader2 v-if="isFreezingLoading" :size="16" class="animate-spin" />
+                                <Snowflake v-else :size="16" />
+                                Generate Freeze
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pending Freezing Transactions -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Transaksi Freeze Pending</h4>
+                            <span class="bg-cyan-100 text-cyan-700 text-xs px-3 py-1 rounded-full font-bold">
+                                {{ pendingFreezings.length }} Menunggu
+                            </span>
+                        </div>
+
+                        <div v-if="pendingFreezings.length === 0" class="text-center py-6 text-muted-foreground">
+                            <Snowflake :size="32" class="mx-auto mb-2 opacity-20" />
+                            <p class="text-sm">Tidak ada transaksi freeze yang menunggu persetujuan.</p>
+                        </div>
+
+                        <div v-else class="grid grid-cols-1 gap-4">
+                            <div v-for="tf in pendingFreezings" :key="tf.id"
+                                class="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-xl bg-cyan-50/30 border-cyan-100">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono text-xs font-bold text-cyan-600">#{{ tf.id }}</span>
+                                        <span class="text-[10px] bg-white border px-2 py-0.5 rounded font-bold uppercase">{{ tf.gym?.name }}</span>
+                                    </div>
+                                    <p class="font-bold text-sm">Freeze {{ tf.day_freeze }} hari</p>
+                                    <p class="text-xs text-muted-foreground">Total: {{ formatRupiah(tf.total_price) }}</p>
+                                </div>
+
+                                <div class="flex items-center gap-2 mt-4 md:mt-0">
+                                    <button @click="handleUpdateTransactionFreezing(tf.id, 'success')"
+                                        :disabled="isFreezingLoading"
+                                        class="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                        title="Setujui Freeze">
+                                        <CheckCircle :size="18" />
+                                    </button>
+                                    <button @click="handleUpdateTransactionFreezing(tf.id, 'failed')"
+                                        :disabled="isFreezingLoading"
+                                        class="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                        title="Tolak Freeze">
+                                        <XCircle :size="18" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

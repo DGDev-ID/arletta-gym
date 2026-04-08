@@ -13,6 +13,7 @@ class MasterGym extends Model
         'description',
         'start_access',
         'price_per_session',
+        'freeze_price',
     ];
 
     protected $casts = [

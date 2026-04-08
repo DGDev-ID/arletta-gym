@@ -67,6 +67,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('user/generate-installment', [ManageUserController::class, 'generateInstallment'])->name('user.generate-installment');
             Route::post('/user/transactions/{transaction}/manual-action', [ManageUserController::class, 'approveOrRejectManualPayment'])
                 ->name('management.user.transactions.manual-action');
+            Route::post('user/freeze', [ManageUserController::class, 'freeze'])->name('user.freeze');
+            Route::post('user/unfreeze', [ManageUserController::class, 'unfreeze'])->name('user.unfreeze');
+            Route::post('user/update-transaction-freezing', [ManageUserController::class, 'updateTransactionFreezing'])->name('user.update-transaction-freezing');
 
             Route::resource('personal-trainer', ManagePersonalTrainerController::class);
         });
