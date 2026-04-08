@@ -100,7 +100,8 @@ function setStatus(id: number, status: 'success' | 'failed') {
                                     <td class="px-6 py-3">{{ trx.phone }}</td>
                                     <td class="px-6 py-3">{{ trx.gym }}</td>
                                     <td class="px-6 py-3 font-semibold">{{ formatRupiah(trx.price) }}</td>
-                                    <td class="px-6 py-3">{{ new Date(trx.date).toLocaleString('id-ID') }}</td>
+                                    <!-- <td class="px-6 py-3">{{ new Date(trx.date).toLocaleString('id-ID') }}</td> -->
+                                    <td class="px-6 py-3">{{ new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) }}</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -8,10 +8,12 @@ use App\Models\MasterProduct;
 use App\Models\GymAdmin;
 use App\Models\TransactionProductOut;
 use App\Models\TransactionProduct;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionPosController extends Controller
 {
@@ -43,10 +45,19 @@ class TransactionPosController extends Controller
 
         $pendingTransactions = $pendingQuery->latest()->get();
 
+        $successQuery = TransactionProductOut::where('status', 'success')->with(['products.product.category']);
+        if ($allowedGymIds) {
+            $successQuery->whereHas('products.product', function ($q) use ($allowedGymIds) {
+                $q->whereIn('gym_id', $allowedGymIds);
+            });
+        }
+        $successTransactions = $successQuery->latest()->get();
+
         return Inertia::render('Transaction/POS/Index', [
             'gyms' => $gyms,
             'products' => $products,
             'pendingTransactions' => $pendingTransactions,
+            'successTransactions' => $successTransactions,
             'selectedGymId' => $selectedGymId,
         ]);
     }
@@ -119,5 +130,73 @@ class TransactionPosController extends Controller
         });
 
         return redirect()->back()->with('success', 'Transaksi diselesaikan, stok produk diperbarui.');
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+        $allowedGymIds = null;
+
+        if (!$user->hasRole('Super Admin')) {
+            $allowedGymIds = GymAdmin::where('admin_id', $user->id)->pluck('gym_id');
+        }
+
+        $query = TransactionProductOut::where('status', 'success')
+            ->with(['products.product.category', 'products.product.gym']);
+
+        if ($allowedGymIds) {
+            $query->whereHas('products.product', function ($q) use ($allowedGymIds) {
+                $q->whereIn('gym_id', $allowedGymIds);
+            });
+        }
+
+        $transactions = $query->latest()->get();
+
+        $now = Carbon::now();
+        $filename = 'kasir_pembayaran_' . $now->format('Y_m_d') . '.csv';
+
+        return response()->streamDownload(function () use ($transactions) {
+            $handle = fopen('php://output', 'w');
+
+            // BOM for Excel UTF-8
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'No',
+                'ID Transaksi',
+                'Nama Produk',
+                'Kategori',
+                'Gym',
+                'Qty',
+                'Harga Beli',
+                'Harga Jual',
+                'Total Harga Transaksi',
+                'Status',
+                'Tanggal',
+            ], ';');
+
+            $no = 1;
+            foreach ($transactions as $trx) {
+                foreach ($trx->products as $tp) {
+                    fputcsv($handle, [
+                        $no++,
+                        $trx->id,
+                        $tp->product?->name ?? '-',
+                        $tp->product?->category?->name ?? '-',
+                        $tp->product?->gym?->name ?? '-',
+                        $tp->quantity,
+                        $tp->buy_price,
+                        $tp->sell_price,
+                        $trx->total_price,
+                        $trx->status,
+                        $trx->created_at?->format('d/m/Y H:i'),
+                    ], ';');
+                }
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 }

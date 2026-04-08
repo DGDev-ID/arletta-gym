@@ -5,11 +5,13 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
 import { type BreadcrumbItem } from '@/types';
+import { formatRupiah } from '@/helpers/formatRupiah';
 
 const props = defineProps<{
     gyms: { id: number; name: string }[];
     products: any[];
     pendingTransactions: any[];
+    successTransactions: any[];
     selectedGymId: number | null;
 }>();
 
@@ -64,6 +66,18 @@ const makeSuccess = (id: number) => {
 const makeFailed = (id: number) => {
     if (!confirm('Tandai transaksi ini gagal dan hapus log?')) return;
     router.post(`/transaction/pos/${id}/make-failed`);
+};
+
+const successList = computed(() => props.successTransactions.map((t: any, idx: number) => ({
+    no: idx + 1,
+    id: t.id,
+    items: t.products?.map((p: any) => `${p.product?.name ?? '-'} x${p.quantity}`).join(', ') || '-',
+    totalPrice: t.total_price || 0,
+    date: t.created_at,
+})));
+
+const exportCsv = () => {
+    window.location.href = '/transaction/pos/export-csv';
 };
 </script>
 
@@ -167,6 +181,37 @@ const makeFailed = (id: number) => {
 
                                     <tr v-if="props.pendingTransactions.length === 0">
                                         <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi pending.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
+                            <div class="p-4 flex justify-between items-center">
+                                <h3 class="font-medium mb-2">Success Transactions</h3>
+                                <button @click="exportCsv"
+                                    class="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">
+                                    Export CSV
+                                </button>
+                            </div>
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-muted/50">
+                                    <tr class="text-muted-foreground">
+                                        <th class="px-6 py-3 text-left">No</th>
+                                        <th class="px-6 py-3 text-left">Items</th>
+                                        <th class="px-6 py-3 text-left">Total Harga</th>
+                                        <th class="px-6 py-3 text-left">Tanggal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="trx in successList" :key="trx.id" class="border-t hover:bg-muted/40 transition">
+                                        <td class="px-6 py-3">{{ trx.no }}</td>
+                                        <td class="px-6 py-3 font-medium">{{ trx.items }}</td>
+                                        <td class="px-6 py-3 font-semibold">{{ formatRupiah(trx.totalPrice) }}</td>
+                                        <td class="px-6 py-3">{{ new Date(trx.date).toLocaleString('id-ID') }}</td>
+                                    </tr>
+                                    <tr v-if="successList.length === 0">
+                                        <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
                                     </tr>
                                 </tbody>
                             </table>

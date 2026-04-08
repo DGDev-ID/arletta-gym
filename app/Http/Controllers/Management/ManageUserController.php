@@ -86,6 +86,7 @@ class ManageUserController extends Controller
             'emergency_name' => 'nullable|string|max:255',
             'emergency_phone' => 'nullable|string|max:20',
             'emergency_relation' => 'nullable|string|max:100',
+            'notes' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -117,6 +118,7 @@ class ManageUserController extends Controller
                 'emergency_name' => $validated['emergency_name'] ?? null,
                 'emergency_phone' => $validated['emergency_phone'] ?? null,
                 'emergency_relation' => $validated['emergency_relation'] ?? null,
+                'notes' => $validated['notes'] ?? null,
             ]);
         });
 
@@ -242,6 +244,7 @@ class ManageUserController extends Controller
             'emergency_name' => 'nullable|string|max:255',
             'emergency_phone' => 'nullable|string|max:20',
             'emergency_relation' => 'nullable|string|max:100',
+            'notes' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($validated, $user, $request) {
@@ -265,6 +268,7 @@ class ManageUserController extends Controller
                 'emergency_name' => $validated['emergency_name'] ?? null,
                 'emergency_phone' => $validated['emergency_phone'] ?? null,
                 'emergency_relation' => $validated['emergency_relation'] ?? null,
+                'notes' => $validated['notes'] ?? null,
             ];
 
             if ($request->hasFile('photo')) {

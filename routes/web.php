@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
             Route::resource('history', HistoryTransactionController::class);
             Route::resource('transaction-per-session', TransactionPerSessionController::class);
             Route::get('pos', [TransactionPosController::class, 'index'])->name('pos.index');
+            Route::get('pos/export-csv', [TransactionPosController::class, 'exportCsv'])->name('pos.export-csv');
             Route::post('pos', [TransactionPosController::class, 'store'])->name('pos.store');
             Route::post('pos/{transactionProductOut}/make-success', [TransactionPosController::class, 'makeSuccess'])->name('pos.make-success');
             Route::post('pos/{transactionProductOut}/make-failed', [TransactionPosController::class, 'makeFailed'])->name('pos.make-failed');

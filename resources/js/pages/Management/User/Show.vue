@@ -438,6 +438,7 @@ const form = useForm({
     emergency_name: props.user.user_detail?.emergency_name || '',
     emergency_phone: props.user.user_detail?.emergency_phone || '',
     emergency_relation: props.user.user_detail?.emergency_relation || '',
+    notes: props.user.user_detail?.notes || '',
 });
 
 const existingPhoto = ref(props.user.user_detail?.photo_url || null);
@@ -732,6 +733,22 @@ const downloadSVG = () => {
                                         <Input v-model="form.emergency_relation" placeholder="Contoh: Orang tua, Saudara"
                                             class="rounded-xl" />
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Catatan Section -->
+                            <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
+                                <h3 class="font-semibold flex items-center gap-2 text-foreground">
+                                    <MapPin :size="18" class="text-primary" />
+                                    Catatan
+                                </h3>
+                                <hr class="border-muted" />
+
+                                <div class="space-y-2">
+                                    <label
+                                        class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Catatan / Deskripsi</label>
+                                    <Textarea v-model="form.notes" rows="4" placeholder="Catatan tambahan mengenai user (opsional)"
+                                        class="rounded-xl" />
                                 </div>
                             </div>
                         </div>
