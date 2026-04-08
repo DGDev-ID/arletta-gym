@@ -463,6 +463,22 @@ class ManageUserController extends Controller
         $userGym->freezed_end_at = null;
         $userGym->save();
 
+        // Send WaBlast
+        try {
+            $waBlastTemplate = WABlastTemplate::where('template_name', 'UNFREEZE_MEMBERSHIP')->first();
+            SendWhatsappBlast::dispatch(
+                $userGym->user->userDetail->phone_number,
+                $waBlastTemplate->template_id,
+                [
+                    '{CUST_NAME}' => $userGym->user->name,
+                    '{GYM_NAME}' => $userGym->gym->name,
+                    '{UNFREEZE_AT}' => now()->format('d M Y'),
+                    '{MEMBERSHIP_END_AT}' => $userGym->membership_end_at->format('d M Y'),
+                ]
+            );
+        } catch (\Throwable $th) {
+        }
+
         return response()->json(['message' => 'User berhasil di-unfreeze.']);
     }
 
