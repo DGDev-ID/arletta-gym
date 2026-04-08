@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:check-freezing-user-gyms')->daily();
+Schedule::command('app:check-membership-end-reminder')->daily();

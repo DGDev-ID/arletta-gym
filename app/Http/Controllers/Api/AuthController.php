@@ -544,8 +544,8 @@ class AuthController extends Controller
 
         try {
             $waBlastTemplate = WABlastTemplate::where('template_name', 'OTP_RESET_PASSWORD')->firstOrFail();
-            $waService = new ServicesWhatsappBlastService();
-            $waService->send(
+            SendWhatsappBlast::dispatch
+            (
                 $userPhone,
                 $waBlastTemplate->template_id,
                 [
