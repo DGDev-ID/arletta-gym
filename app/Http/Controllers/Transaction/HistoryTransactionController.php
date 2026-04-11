@@ -111,7 +111,7 @@ class HistoryTransactionController extends Controller
                 'Sesi / Hari',
                 'Status',
                 'Tanggal',
-            ]);
+            ], ';');
 
             $no = 1;
             foreach ($transactions as $tx) {
@@ -143,7 +143,7 @@ class HistoryTransactionController extends Controller
                     $tx->sessions_or_days ?? '-',
                     $tx->status,
                     $tx->created_at?->format('d/m/Y H:i'),
-                ]);
+                ], ';');
             }
 
             fclose($handle);

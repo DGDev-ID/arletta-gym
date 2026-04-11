@@ -87,6 +87,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');
         Route::post('scan-qr', [ScanQRCodeController::class, 'scan'])->name('scan-qr.scan');
+        Route::get('scan-qr/members', [ScanQRCodeController::class, 'members'])->name('scan-qr.members');
+        Route::get('scan-qr/member/{userId}', [ScanQRCodeController::class, 'memberDetail'])->name('scan-qr.member-detail');
     });
 });
 
