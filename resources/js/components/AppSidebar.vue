@@ -75,6 +75,12 @@ const managementNavItems: NavItem[] = [
         roles: ["Super Admin", "Admin"]
     },
     {
+        title: "Reschedule",
+        href: '/management/reschedule',
+        icon: CalendarDays,
+        roles: ["Super Admin", "Admin"]
+    },
+    {
         title: "Admin",
         href: management.admin.index(),
         icon: ShieldCheck,

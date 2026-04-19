@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Management\ManageAdminController;
 use App\Http\Controllers\Management\ManagePersonalTrainerController;
 use App\Http\Controllers\Management\ManageUserController;
+use App\Http\Controllers\Management\ManageRescheduleController;
 use App\Http\Controllers\Master\MasterClassScheduleController;
 use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
@@ -70,6 +71,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('user/freeze', [ManageUserController::class, 'freeze'])->name('user.freeze');
             Route::post('user/unfreeze', [ManageUserController::class, 'unfreeze'])->name('user.unfreeze');
             Route::post('user/update-transaction-freezing', [ManageUserController::class, 'updateTransactionFreezing'])->name('user.update-transaction-freezing');
+            // Reschedule membership start (management)
+            Route::get('reschedule', [ManageRescheduleController::class, 'index'])->name('user.reschedule.index');
+            Route::post('reschedule', [ManageRescheduleController::class, 'update'])->name('user.reschedule.update');
 
             Route::resource('personal-trainer', ManagePersonalTrainerController::class);
         });

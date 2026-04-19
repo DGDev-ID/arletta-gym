@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\TrainerApiController;
 use App\Http\Controllers\Api\GymController;
 use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\Api\CheckPossibleScheduleController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -95,6 +96,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Payments
     Route::post('/payments/create', [PaymentController::class, 'create']);
+
+    // Check scheduling possibility for a membership
+    Route::get('/check-possible-schedule/{membership_id}', [CheckPossibleScheduleController::class, '__invoke']);
 
     // Signatures
     Route::post('/signatures', [SignatureController::class, 'store']);

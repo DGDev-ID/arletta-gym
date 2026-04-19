@@ -47,13 +47,11 @@ const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>(
 const availableMethods = ['manual', 'va', 'qris'] as const;
 const calculateInstallmentTotal = (installment: any) => {
     const method = installmentPaymentMethods.value[installment.id] || 'manual';
-    // PPN disabled - harga sudah termasuk PPN
-    // const base = parseFloat(installment.price) + parseFloat(installment.ppn_fee);
     const base = parseFloat(installment.price);
 
     let fee = 0;
     if (method === 'va') fee = 4000;
-    else if (method === 'qris') fee = base * 0.007; // Sesuai logika code 0.7%
+    else if (method === 'qris') fee = base * 0.007;
 
     return {
         base: base,
@@ -166,29 +164,72 @@ const selectedUserGym = computed(() => {
     return props.userGyms.find((ug: any) => String(ug.gym_id) === String(paymentForm.value.gym_id));
 });
 
+// Helpers untuk Tanggal
+const toISODate = (d: Date | null) => {
+    if (!d) return null;
+    const date = new Date(d);
+    // Mengamankan masalah timezone browser agar format YYYY-MM-DD selalu tepat
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().split('T')[0];
+};
+
 const hasActiveMembershipForSelectedGym = computed(() => {
     const ug = selectedUserGym.value;
     if (!ug || !ug.membership_end_at) return false;
     return new Date(ug.membership_end_at) > new Date();
 });
 
-const membershipStartDate = computed(() => {
-    if (!hasActiveMembershipForSelectedGym.value) return null;
-    return new Date(selectedUserGym.value.membership_end_at);
+// LOGIKA BARU: Tentukan apakah input Tanggal Mulai perlu di-render
+const showMembershipDateInput = computed(() => {
+    if (paymentForm.value.transaction_type !== 'membership') return false;
+
+    const ug = selectedUserGym.value;
+    // Tampilkan jika User baru / belum punya record membership sama sekali
+    if (!ug || !ug.membership_end_at) return true;
+
+    const endDate = new Date(ug.membership_end_at);
+    const today = new Date();
+
+    // Set waktu jam/menit ke 00:00 untuk komparasi tanggal yang murni
+    endDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Tampilkan jika Membership berakhir HARI INI atau SUDAH LEWAT
+    if (endDate <= today) return true;
+
+    // Sembunyikan opsi jika Membership masih aktif (dan bukan hari ini selesainya)
+    return false;
 });
 
-const membershipEndDate = computed(() => {
-    if (!membershipStartDate.value || !selectedItem.value) return null;
+// State untuk input Tanggal Mulai
+const membershipStartInput = ref<string | null>(toISODate(new Date()));
+
+// Watcher untuk sinkronisasi kapan paket atau gym berubah
+watch([() => paymentForm.value.gym_id, () => selectedItem.value], () => {
+    if (showMembershipDateInput.value) {
+        // Jika UI input ditampilkan (user baru / berakhir hari ini), set default ke hari ini
+        membershipStartInput.value = toISODate(new Date());
+    } else {
+        // Jika UI disembunyikan (masih aktif), siapkan start_date di background setelah masa aktif habis
+        const ug = selectedUserGym.value;
+        if (ug && ug.membership_end_at) {
+            membershipStartInput.value = toISODate(new Date(ug.membership_end_at));
+        }
+    }
+});
+
+const editableMembershipStartDate = computed(() => {
+    if (membershipStartInput.value) return new Date(membershipStartInput.value);
+    return new Date();
+});
+
+const editableMembershipEndDate = computed(() => {
+    if (!editableMembershipStartDate.value || !selectedItem.value) return null;
     const days = selectedItem.value.duration_in_days || 0;
-    const start = new Date(membershipStartDate.value);
+    const start = new Date(editableMembershipStartDate.value);
     const end = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
     return end;
 });
-
-const toISODate = (d: Date | null) => {
-    if (!d) return null;
-    return new Date(d).toISOString().split('T')[0];
-};
 
 const handleManualPayment = (id: number | string, action: 'approve' | 'reject') => {
     const label = action === 'approve' ? 'MENYETUJUI' : 'MENOLAK';
@@ -224,24 +265,21 @@ const handleGeneratePayment = async () => {
             promo_code: paymentForm.value.promo_code || null,
         };
 
-        // If the user already has an active membership at this gym, schedule new membership
-        // to start after the current membership ends. Send start_at so backend can persist it.
-        if (paymentForm.value.transaction_type === 'membership' && hasActiveMembershipForSelectedGym.value && membershipStartDate.value) {
-            // format YYYY-MM-DD
-            payload.start_at = toISODate(membershipStartDate.value);
+        // Otomatis menempelkan parameter start_at dari state watcher di atas
+        if (paymentForm.value.transaction_type === 'membership') {
+            if (membershipStartInput.value) {
+                payload.start_at = membershipStartInput.value;
+            }
         }
 
         const response = await axios.post('/management/user/generate-payment', payload);
         const data = response.data;
 
-        // LOGIKA BARU: Cek snap_token
         if (data.snap_token) {
             window.snap.pay(data.snap_token, {
                 onSuccess: function (result: any) {
                     console.log('success', result);
                     alert("Pembayaran Berhasil!");
-                    // Opsi: redirect ke halaman transaksi atau reload
-                    // router.visit('/management/user/transactions');
                 },
                 onPending: function (result: any) {
                     console.log('pending', result);
@@ -298,21 +336,14 @@ const calculation = computed(() => {
     });
 
     const subtotal = Math.max(0, basePrice - totalDiscount);
-    // PPN disabled - harga sudah termasuk PPN
-    // const ppn = subtotal * 0.11;
     const ppn = 0;
 
     let fee = 0;
     if (paymentForm.value.payment_type === 'va') fee = 4000;
-    // PPN disabled - fee dihitung dari subtotal saja
-    // else if (paymentForm.value.payment_type === 'qris') fee = (subtotal + ppn) * 0.007;
     else if (paymentForm.value.payment_type === 'qris') fee = subtotal * 0.007;
 
-    // PPN disabled - grandTotal tanpa ppn
-    // const grandTotal = subtotal + ppn + fee;
     const grandTotal = subtotal + fee;
 
-    // 🔥 DP Logic
     let payableNow = grandTotal;
     let remaining = 0;
 
@@ -341,22 +372,17 @@ const calculation = computed(() => {
 
 const activePromos = computed(() => {
     if (!selectedItem.value) return [];
-
-    // 1. Ambil semua promo GLOBAL (sudah difilter dari backend)
     const globals = paymentForm.value.transaction_type === 'membership'
         ? (selectedItem.value.membership_promos || [])
         : (selectedItem.value.pt_package_promos || []);
 
-    // 2. Gabungkan dengan MAKSIMAL SATU promo manual jika ada
     const allPromos = [...globals];
     if (appliedManualPromo.value) {
         allPromos.push(appliedManualPromo.value);
     }
-
     return allPromos;
 });
 
-// Update fungsi verifyPromo agar hanya menyimpan satu promo saja
 const verifyPromo = async () => {
     if (!paymentForm.value.promo_code) return;
     try {
@@ -366,21 +392,18 @@ const verifyPromo = async () => {
             type: paymentForm.value.transaction_type
         });
 
-        // Cek jika promo yang diinput ternyata kodenya 'GLOBAL', 
-        // kita tolak karena sudah terpasang otomatis
         if (res.data.unique_code === null) {
             alert("Promo ini sudah aktif secara otomatis.");
             return;
         }
 
-        appliedManualPromo.value = res.data; // Mengganti promo manual sebelumnya (hanya bisa 1)
+        appliedManualPromo.value = res.data;
         alert("Kode promo berhasil dipasang!");
     } catch (e) {
         alert("Kode promo tidak valid untuk paket ini.");
     }
 };
 
-// === FREEZING ===
 const freezeForm = ref({
     gym_id: '' as string | number,
     freeze_count: 30,
@@ -458,11 +481,10 @@ const breadcrumbItems = [
     { title: 'Edit User', href: '#' },
 ];
 
-// Inisialisasi form dengan data yang ada
 const form = useForm({
     email: props.user.email || '',
     name: props.user.name || '',
-    password: '', // Kosongkan, hanya diisi jika ingin ganti password
+    password: '',
 
     nik: props.user.user_detail?.nik || '',
     birth_place: props.user.user_detail?.birth_place || '',
@@ -556,10 +578,10 @@ const submit = () => {
         headers: { 'X-HTTP-Method-Override': 'PUT' },
     });
 };
+
 const qrRef = ref<InstanceType<typeof QrcodeVue> | null>(null);
 const downloadSVG = () => {
     const svgElement = qrRef.value?.$el;
-
     const serializer = new XMLSerializer();
     let source = serializer.serializeToString(svgElement);
 
@@ -583,7 +605,6 @@ const downloadSVG = () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-
         <Head :title="`Edit User - ${props.user.name}`" />
 
         <div class="min-h-screen bg-muted/40 py-6 md:py-10">
@@ -633,7 +654,6 @@ const downloadSVG = () => {
                                         </div>
                                     </div>
 
-                                    <!-- Photo Section -->
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Foto User</label>
                                         <div class="flex flex-col items-center gap-3">
@@ -741,7 +761,6 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
-                            <!-- Emergency Contact Section -->
                             <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
                                 <h3 class="font-semibold flex items-center gap-2 text-foreground">
                                     <Heart :size="18" class="text-primary" />
@@ -773,7 +792,6 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
-                            <!-- Catatan Section -->
                             <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
                                 <h3 class="font-semibold flex items-center gap-2 text-foreground">
                                     <MapPin :size="18" class="text-primary" />
@@ -849,23 +867,21 @@ const downloadSVG = () => {
                             </div>
 
                             <div v-if="paymentForm.selected_item_id" class="space-y-2">
-                                <template v-if="paymentForm.transaction_type === 'membership' && hasActiveMembershipForSelectedGym">
-                                    <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai (Auto)</label>
+                                <template v-if="showMembershipDateInput">
+                                    <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai</label>
                                     <div class="grid grid-cols-2 gap-3">
-                                        <input type="date" :value="toISODate(membershipStartDate)" disabled
+                                        <input type="date" v-model="membershipStartInput" :min="toISODate(new Date())"
                                             class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
-                                        <input type="date" :value="toISODate(membershipEndDate)" disabled
+                                        <input type="date" :value="toISODate(editableMembershipEndDate)" disabled
                                             class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
                                     </div>
                                 </template>
 
-                                <label class="text-xs font-bold uppercase text-muted-foreground">
+                                <label class="text-xs font-bold uppercase text-muted-foreground mt-4 block">
                                     Metode Pembayaran
                                 </label>
 
                                 <div class="grid grid-cols-3 gap-3">
-
-                                    <!-- Manual -->
                                     <button type="button" @click="paymentForm.payment_type = 'manual'" :class="paymentForm.payment_type === 'manual'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -875,7 +891,6 @@ const downloadSVG = () => {
                                         <div class="text-[10px] opacity-70">Fee 0</div>
                                     </button>
 
-                                    <!-- VA -->
                                     <button type="button" @click="paymentForm.payment_type = 'va'" :class="paymentForm.payment_type === 'va'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -885,7 +900,6 @@ const downloadSVG = () => {
                                         <div class="text-[10px] opacity-70">Fee Rp 4.000</div>
                                     </button>
 
-                                    <!-- QRIS -->
                                     <button type="button" @click="paymentForm.payment_type = 'qris'" :class="paymentForm.payment_type === 'qris'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -894,7 +908,6 @@ const downloadSVG = () => {
                                         QRIS
                                         <div class="text-[10px] opacity-70">Fee 0.7%</div>
                                     </button>
-
                                 </div>
                             </div>
 
@@ -905,8 +918,6 @@ const downloadSVG = () => {
                                 </label>
 
                                 <div class="grid grid-cols-2 gap-3">
-
-                                    <!-- Full Payment -->
                                     <button type="button" @click="paymentForm.payment_mode = 'full_payment'" :class="paymentForm.payment_mode === 'full_payment'
                                         ? 'bg-primary text-white'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -914,7 +925,6 @@ const downloadSVG = () => {
                                         Full Payment
                                     </button>
 
-                                    <!-- DP Payment (Only PT) -->
                                     <button v-if="paymentForm.transaction_type === 'pt'" type="button"
                                         @click="paymentForm.payment_mode = 'dp_payment'" :class="paymentForm.payment_mode === 'dp_payment'
                                             ? 'bg-primary text-white'
@@ -922,10 +932,8 @@ const downloadSVG = () => {
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
                                         DP Payment
                                     </button>
-
                                 </div>
 
-                                <!-- DP Percent Input -->
                                 <div v-if="paymentForm.payment_mode === 'dp_payment'
                                     && paymentForm.transaction_type === 'pt'" class="mt-3">
                                     <label class="text-xs font-medium text-muted-foreground">
@@ -969,12 +977,6 @@ const downloadSVG = () => {
                                 </div>
 
                                 <hr class="border-muted border-dashed" />
-
-                                <!-- PPN disabled - harga sudah termasuk PPN -->
-                                <!-- <div class="flex justify-between text-muted-foreground">
-                                    <span>PPN (11%)</span>
-                                    <span>{{ calculation.ppn.toLocaleString() }}</span>
-                                </div> -->
 
                                 <div class="flex justify-between text-orange-600 italic">
                                     <span>Biaya Layanan ({{ paymentForm.payment_type.toUpperCase() }})</span>
@@ -1139,9 +1141,6 @@ const downloadSVG = () => {
                                 <div class="space-y-1">
                                     <p class="font-bold text-sm">{{ inst.description }}</p>
                                     <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                                        <!-- PPN disabled - harga sudah termasuk PPN -->
-                                        <!-- <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price) +
-                                            parseFloat(inst.ppn_fee)) }}</b></span> -->
                                         <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price)) }}</b></span>
                                         <span class="text-red-500">Jatuh Tempo: {{ inst.must_paid_before }}</span>
                                     </div>
@@ -1183,7 +1182,6 @@ const downloadSVG = () => {
                     </div>
                 </div>
 
-                <!-- Freezing Section -->
                 <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6 mt-8">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
@@ -1193,7 +1191,6 @@ const downloadSVG = () => {
                     </div>
                     <hr class="border-muted" />
 
-                    <!-- User Gym Freeze Status -->
                     <div v-if="userGyms.length > 0" class="space-y-3">
                         <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Status Gym User</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1221,7 +1218,6 @@ const downloadSVG = () => {
                         </div>
                     </div>
 
-                    <!-- Freeze Form -->
                     <div class="space-y-4">
                         <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Buat Transaksi Freeze</h4>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -1247,7 +1243,6 @@ const downloadSVG = () => {
                         </div>
                     </div>
 
-                    <!-- Pending Freezing Transactions -->
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
                             <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Transaksi Freeze Pending</h4>
@@ -1294,7 +1289,6 @@ const downloadSVG = () => {
             </div>
         </div>
 
-        <!-- Webcam Modal -->
         <Teleport to="body">
             <div v-if="showWebcam"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
