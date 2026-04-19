@@ -34,7 +34,7 @@ class ManageUserController extends Controller
     public function index(Request $request)
     {
         $query = User::query()->with(['roles', 'userGyms' => function ($q) {
-            $q->select('user_id', 'membership_end_at')->orderBy('membership_end_at', 'desc');
+            $q->select('user_id', 'membership_start_at', 'membership_end_at')->orderBy('membership_end_at', 'desc');
         }]);
 
         // Search
@@ -360,6 +360,7 @@ class ManageUserController extends Controller
                 'max:100'
             ],
             'installment_pt_id' => ['nullable', 'exists:user_pt_package_instalments,id'],
+            'start_at' => ['nullable', 'date'],
             'promo_code' => 'nullable|string',
             // 'trainer_id' => ['nullable', 'exists:users,id'],
         ]);

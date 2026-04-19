@@ -160,6 +160,36 @@ const selectedItem = computed(() => {
     return gymData.value.pt_packages.find(p => p.id === paymentForm.value.selected_item_id);
 });
 
+// Selected user's gym record for the chosen gym
+const selectedUserGym = computed(() => {
+    if (!paymentForm.value.gym_id) return null;
+    return props.userGyms.find((ug: any) => String(ug.gym_id) === String(paymentForm.value.gym_id));
+});
+
+const hasActiveMembershipForSelectedGym = computed(() => {
+    const ug = selectedUserGym.value;
+    if (!ug || !ug.membership_end_at) return false;
+    return new Date(ug.membership_end_at) > new Date();
+});
+
+const membershipStartDate = computed(() => {
+    if (!hasActiveMembershipForSelectedGym.value) return null;
+    return new Date(selectedUserGym.value.membership_end_at);
+});
+
+const membershipEndDate = computed(() => {
+    if (!membershipStartDate.value || !selectedItem.value) return null;
+    const days = selectedItem.value.duration_in_days || 0;
+    const start = new Date(membershipStartDate.value);
+    const end = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
+    return end;
+});
+
+const toISODate = (d: Date | null) => {
+    if (!d) return null;
+    return new Date(d).toISOString().split('T')[0];
+};
+
 const handleManualPayment = (id: number | string, action: 'approve' | 'reject') => {
     const label = action === 'approve' ? 'MENYETUJUI' : 'MENOLAK';
 
@@ -193,6 +223,13 @@ const handleGeneratePayment = async () => {
             dp_percent: paymentForm.value.payment_mode === 'dp_payment' ? paymentForm.value.dp_percent : null,
             promo_code: paymentForm.value.promo_code || null,
         };
+
+        // If the user already has an active membership at this gym, schedule new membership
+        // to start after the current membership ends. Send start_at so backend can persist it.
+        if (paymentForm.value.transaction_type === 'membership' && hasActiveMembershipForSelectedGym.value && membershipStartDate.value) {
+            // format YYYY-MM-DD
+            payload.start_at = toISODate(membershipStartDate.value);
+        }
 
         const response = await axios.post('/management/user/generate-payment', payload);
         const data = response.data;
@@ -812,6 +849,16 @@ const downloadSVG = () => {
                             </div>
 
                             <div v-if="paymentForm.selected_item_id" class="space-y-2">
+                                <template v-if="paymentForm.transaction_type === 'membership' && hasActiveMembershipForSelectedGym">
+                                    <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai (Auto)</label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="date" :value="toISODate(membershipStartDate)" disabled
+                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+                                        <input type="date" :value="toISODate(membershipEndDate)" disabled
+                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+                                    </div>
+                                </template>
+
                                 <label class="text-xs font-bold uppercase text-muted-foreground">
                                     Metode Pembayaran
                                 </label>

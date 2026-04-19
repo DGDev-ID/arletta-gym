@@ -73,26 +73,49 @@ class UpdateStatusTransactionService
                 $today = Carbon::now();
                 $startAccess = Carbon::parse($membership->gym->start_access);
 
-                if (!$userGym) {
+                // If the transaction has an explicit start_at, prefer that when scheduling
+                $specifiedStart = null;
+                if (!empty($transaction->start_at)) {
+                    $specifiedStart = Carbon::parse($transaction->start_at);
+                }
 
-                    $startDate = $today->lt($startAccess) ? $startAccess : $today;
+                if (!$userGym) {
+                    // New membership record
+                    $startDate = $specifiedStart ?: ($today->lt($startAccess) ? $startAccess : $today);
 
                     UserGym::create([
                         'user_id' => $transaction->user_id,
                         'gym_id' => $membership->gym_id,
+                        'membership_start_at' => $startDate,
                         'membership_end_at' => $startDate->copy()->addDays($transaction->sessions_or_days)
                     ]);
                 } else {
-                    $currentEnd = Carbon::parse($userGym->membership_end_at);
-                    $baseDate = $currentEnd->isPast() ? $today : $currentEnd;
+                    $currentEnd = $userGym->membership_end_at ? Carbon::parse($userGym->membership_end_at) : null;
+
+                    // Determine base date: if membership still active use current end, otherwise today
+                    $baseDate = ($currentEnd && !$currentEnd->isPast()) ? $currentEnd : $today;
+
+                    // If admin/user specified a start date for this transaction, use it as base
+                    if ($specifiedStart) {
+                        $baseDate = $specifiedStart;
+                    }
 
                     if ($baseDate->lt($startAccess)) {
                         $baseDate = $startAccess;
                     }
 
-                    $userGym->update([
-                        'membership_end_at' => $baseDate->copy()->addDays($transaction->sessions_or_days)
-                    ]);
+                    if (!$currentEnd || $currentEnd->isPast()) {
+                        // previous membership expired — set new start and end
+                        $userGym->update([
+                            'membership_start_at' => $baseDate,
+                            'membership_end_at' => $baseDate->copy()->addDays($transaction->sessions_or_days)
+                        ]);
+                    } else {
+                        // membership still active — extend end date only
+                        $userGym->update([
+                            'membership_end_at' => $baseDate->copy()->addDays($transaction->sessions_or_days)
+                        ]);
+                    }
                 }
             }
 

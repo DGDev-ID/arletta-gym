@@ -141,6 +141,12 @@ class PaymentService
                 'sessions_or_days' => $totalSessionsOrDays
             ]);
 
+                // store optional start_at on transaction (used when scheduling membership to start later)
+                if (!empty($validated['start_at'])) {
+                    $transaction->start_at = $validated['start_at'];
+                    $transaction->save();
+                }
+
             $transaction->transactionDetails()->create([
                 'status' => 'pending',
             ]);
@@ -287,6 +293,7 @@ class PaymentService
             'transaction_type' => ['required', Rule::in(['membership', 'pt'])],
             'type_id' => 'required|integer',
             'payment_method' => ['required', Rule::in(['manual', 'va', 'qris'])],
+            'start_at' => ['nullable', 'date'],
             'payment_type' => ['nullable', Rule::requiredIf($data['transaction_type'] === 'pt'), Rule::in(['full_payment', 'dp_payment'])],
             'dp_percent' => ['nullable', Rule::requiredIf(isset($data['payment_type']) && $data['payment_type'] === 'dp_payment'), 'numeric', 'min:0', 'max:100'],
             'promo_code' => 'nullable|string',
