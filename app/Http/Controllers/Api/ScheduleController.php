@@ -37,7 +37,14 @@ class ScheduleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ClassSchedule::with(['gymClass', 'trainer.userDetail'])
-            ->where('is_cancelled', false);
+            ->where('is_cancelled', false)
+            ->whereHas('gymClass', function ($q) {
+                $q->where('name', 'not like', '%Personal%')
+                  ->where(function ($subQ) {
+                      $subQ->where('category', '!=', 'pt')
+                           ->orWhereNull('category');
+                  });
+            });
 
         // Exclude past schedules (date+time already passed)
         $query->where(function ($q) {
@@ -122,7 +129,9 @@ class ScheduleController extends Controller
     )]
     public function classCategories(Request $request): JsonResponse
     {
-        $query = GymClass::where('is_active', true)->whereNotNull('category');
+        $query = GymClass::where('is_active', true)
+            ->whereNotNull('category')
+            ->where('category', '!=', 'pt');
 
         if ($request->filled('gym_id')) {
             $query->where('gym_id', $request->gym_id);
@@ -161,7 +170,12 @@ class ScheduleController extends Controller
     )]
     public function classes(Request $request): JsonResponse
     {
-        $query = GymClass::where('is_active', true);
+        $query = GymClass::where('is_active', true)
+            ->where('name', 'not like', '%Personal%')
+            ->where(function ($q) {
+                $q->where('category', '!=', 'pt')
+                  ->orWhereNull('category');
+            });
 
         if ($request->filled('gym_id')) {
             $query->where('gym_id', $request->gym_id);
