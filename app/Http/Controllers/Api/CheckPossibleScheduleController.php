@@ -24,18 +24,18 @@ class CheckPossibleScheduleController extends Controller
             ->first();
 
         if (!$userGym) {
-            return response()->json(['status' => false, 'membership_end_at' => null]);
+            return response()->json(['status' => true, 'membership_end_at' => null]);
         }
 
         if (!$userGym->membership_end_at) {
-            return response()->json(['status' => false, 'membership_end_at' => null]);
+            return response()->json(['status' => true, 'membership_end_at' => null]);
         }
 
         $end = Carbon::parse($userGym->membership_end_at);
         if ($end->lessThanOrEqualTo(Carbon::today())) {
-            return response()->json(['status' => false, 'membership_end_at' => $end->toDateTimeString()]);
+            return response()->json(['status' => true, 'membership_end_at' => null]);
         }
 
-        return response()->json(['status' => true]);
+        return response()->json(['status' => false, 'membership_end_at' => $end->toDateString()]);
     }
 }

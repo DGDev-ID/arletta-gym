@@ -165,7 +165,7 @@ class ProfileController extends Controller
     {
         $userId = Auth::id();
         $listUserPtPackageIds = UserPtPackageMember::where('user_id', $userId)->pluck('user_pt_package_id');
-        $userPtPackages = UserPtPackage::whereIn('id', $listUserPtPackageIds)->with('ptPackage.gym')->get();
+        $userPtPackages = UserPtPackage::whereIn('id', $listUserPtPackageIds)->with(['ptPackage.gym', 'pt'])->get();
 
         return response()->json([
             'success' => true,
