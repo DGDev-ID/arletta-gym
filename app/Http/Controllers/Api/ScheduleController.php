@@ -37,7 +37,8 @@ class ScheduleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ClassSchedule::with(['gymClass', 'trainer.userDetail'])
-            ->where('is_cancelled', false);
+            ->where('is_cancelled', false)
+            ->whereNot('type', 'session');
 
         // Exclude past schedules (date+time already passed)
         $query->where(function ($q) {
@@ -299,6 +300,7 @@ class ScheduleController extends Controller
             'booked_count' => 0,
             'zoom_link' => null,
             'is_cancelled' => false,
+            'type' => 'session',
         ]);
 
         // Optionally create a booking for client if client_id provided
