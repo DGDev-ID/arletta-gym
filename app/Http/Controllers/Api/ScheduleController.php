@@ -395,6 +395,7 @@ class ScheduleController extends Controller
             'is_cancelled' => true,
             'cancel_reason' => $validated['cancel_reason'] ?? null,
         ]);
+        $schedule->bookings()->update(['status' => 'cancelled']);
 
         return response()->json(['success' => true, 'data' => $schedule, 'message' => 'Session cancelled successfully']);
     }
