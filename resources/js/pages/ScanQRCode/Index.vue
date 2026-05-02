@@ -232,7 +232,7 @@ const membershipLabel = (status: string) => {
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Scan QR Code" />
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6 space-y-8">
+            <div class="max-w-7xl mx-auto px-6 space-y-8">
                 <Heading variant="small" title="Scan QR Code" description="Scan QR code member untuk verifikasi kehadiran di gym." />
 
                 <!-- Step 1: Select Gym -->

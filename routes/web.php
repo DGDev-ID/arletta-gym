@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Management\ManageAdminController;
+use App\Http\Controllers\Management\ManageCheckInController;
 use App\Http\Controllers\Management\ManagePersonalTrainerController;
 use App\Http\Controllers\Management\ManageUserController;
 use App\Http\Controllers\Management\ManageRescheduleController;
@@ -76,6 +77,8 @@ Route::middleware(['auth'])->group(function () {
             Route::post('reschedule', [ManageRescheduleController::class, 'update'])->name('user.reschedule.update');
 
             Route::resource('personal-trainer', ManagePersonalTrainerController::class);
+
+            Route::get('check-in', [ManageCheckInController::class, 'index'])->name('check-in.index');
         });
 
         Route::prefix('transaction')->name('transaction.')->group(function () {
