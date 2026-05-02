@@ -38,13 +38,7 @@ class ScheduleController extends Controller
     {
         $query = ClassSchedule::with(['gymClass', 'trainer.userDetail'])
             ->where('is_cancelled', false)
-            ->whereHas('gymClass', function ($q) {
-                $q->where('name', 'not like', '%Personal%')
-                  ->where(function ($subQ) {
-                      $subQ->where('category', '!=', 'pt')
-                           ->orWhereNull('category');
-                  });
-            });
+            ->whereNot('type', 'session');
 
         // Exclude past schedules (date+time already passed)
         $query->where(function ($q) {
@@ -313,6 +307,7 @@ class ScheduleController extends Controller
             'booked_count' => 0,
             'zoom_link' => null,
             'is_cancelled' => false,
+            'type' => 'session',
         ]);
 
         // Optionally create a booking for client if client_id provided
