@@ -19,6 +19,7 @@ class UserDetail extends Model
         'emergency_name',
         'emergency_phone',
         'emergency_relation',
+        'notes',
     ];
 
     protected $appends = ['photo_url'];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\WhatsappBlastService;
+use App\Jobs\SendWhatsappBlast;
 use App\Models\User;
 use App\Models\WABlastTemplate;
 use Carbon\Carbon;
@@ -33,7 +34,7 @@ class AccountVerificationController extends Controller
 
         // generate signed URL (valid 60 menit)
         $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
+            'api.verification.verify',
             Carbon::now()->addMinutes(60),
             [
                 'id' => $user->id,
@@ -43,7 +44,7 @@ class AccountVerificationController extends Controller
 
         try {
             $waBlastTemplate = WABlastTemplate::where('template_name', 'ACCOUNT_VERIFICATION')->firstOrFail();
-            $res = $this->waService->send(
+            SendWhatsappBlast::dispatch(
                 $user->userDetail->phone_number,
                 $waBlastTemplate->template_id,
                 [
@@ -54,8 +55,7 @@ class AccountVerificationController extends Controller
             );
 
             return response()->json([
-                'message' => 'Link verifikasi berhasil dikirim via WhatsApp',
-                'response' => $res
+                'message' => 'Link verifikasi berhasil dikirim via WhatsApp'
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -65,7 +65,7 @@ class AccountVerificationController extends Controller
         }
     }
 
-    public function verify(Request $request)
+    public function verifyEmail(Request $request)
     {
         // cek signature (WAJIB)
         if (!$request->hasValidSignature()) {

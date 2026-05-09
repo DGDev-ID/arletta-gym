@@ -37,7 +37,8 @@ class ScheduleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ClassSchedule::with(['gymClass', 'trainer.userDetail'])
-            ->where('is_cancelled', false);
+            ->where('is_cancelled', false)
+            ->whereNot('type', 'session');
 
         // Exclude past schedules (date+time already passed)
         $query->where(function ($q) {
@@ -122,7 +123,9 @@ class ScheduleController extends Controller
     )]
     public function classCategories(Request $request): JsonResponse
     {
-        $query = GymClass::where('is_active', true)->whereNotNull('category');
+        $query = GymClass::where('is_active', true)
+            ->whereNotNull('category')
+            ->where('category', '!=', 'pt');
 
         if ($request->filled('gym_id')) {
             $query->where('gym_id', $request->gym_id);
@@ -161,7 +164,12 @@ class ScheduleController extends Controller
     )]
     public function classes(Request $request): JsonResponse
     {
-        $query = GymClass::where('is_active', true);
+        $query = GymClass::where('is_active', true)
+            ->where('name', 'not like', '%Personal%')
+            ->where(function ($q) {
+                $q->where('category', '!=', 'pt')
+                  ->orWhereNull('category');
+            });
 
         if ($request->filled('gym_id')) {
             $query->where('gym_id', $request->gym_id);
@@ -267,7 +275,7 @@ class ScheduleController extends Controller
         // Try to determine gym_class_id if not provided: prefer a class named 'Personal Training' in trainer's gyms
         $gymClassId = $validated['gym_class_id'] ?? null;
         if (!$gymClassId) {
-            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('user_id', $trainerId))->pluck('id');
+            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('pt_id', $trainerId))->pluck('id');
             $found = \App\Models\GymClass::whereIn('gym_id', $trainerGyms)
                 ->where(function ($q) {
                     $q->where('name', 'like', '%Personal%')
@@ -279,7 +287,7 @@ class ScheduleController extends Controller
 
         // If still not found, pick any active class in trainer's first gym (best-effort)
         if (!$gymClassId) {
-            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('user_id', $trainerId))->pluck('id');
+            $trainerGyms = \App\Models\MasterGym::whereHas('gymPts', fn($q) => $q->where('pt_id', $trainerId))->pluck('id');
             $found = \App\Models\GymClass::whereIn('gym_id', $trainerGyms)->first();
             $gymClassId = $found?->id;
         }
@@ -299,6 +307,7 @@ class ScheduleController extends Controller
             'booked_count' => 0,
             'zoom_link' => null,
             'is_cancelled' => false,
+            'type' => 'session',
         ]);
 
         // Optionally create a booking for client if client_id provided
@@ -395,6 +404,7 @@ class ScheduleController extends Controller
             'is_cancelled' => true,
             'cancel_reason' => $validated['cancel_reason'] ?? null,
         ]);
+        $schedule->bookings()->update(['status' => 'cancelled']);
 
         return response()->json(['success' => true, 'data' => $schedule, 'message' => 'Session cancelled successfully']);
     }

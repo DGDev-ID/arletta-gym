@@ -165,7 +165,7 @@ class ProfileController extends Controller
     {
         $userId = Auth::id();
         $listUserPtPackageIds = UserPtPackageMember::where('user_id', $userId)->pluck('user_pt_package_id');
-        $userPtPackages = UserPtPackage::whereIn('id', $listUserPtPackageIds)->with('gym:id,name')->get();
+        $userPtPackages = UserPtPackage::whereIn('id', $listUserPtPackageIds)->with(['ptPackage.gym', 'pt'])->get();
 
         return response()->json([
             'success' => true,
@@ -195,6 +195,13 @@ class ProfileController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'User PT package already has a trainer assigned',
+            ], 400);
+        }
+
+        if ($userPtPackage->status != 'done_payment') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trainer can only be assigned to user PT packages with done_payment status',
             ], 400);
         }
 

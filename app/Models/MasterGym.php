@@ -13,6 +13,7 @@ class MasterGym extends Model
         'description',
         'start_access',
         'price_per_session',
+        'freeze_price',
     ];
 
     protected $casts = [
@@ -43,6 +44,11 @@ class MasterGym extends Model
     public function personalTrainers()
     {
         return $this->belongsToMany(User::class, 'gym_pts', 'gym_id', 'pt_id');
+    }
+
+    public function gymPts()
+    {
+        return $this->hasMany(GymPt::class, 'gym_id');
     }
 
     public function memberships()

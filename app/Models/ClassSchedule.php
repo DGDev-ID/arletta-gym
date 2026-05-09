@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClassSchedule extends Model
 {
+    public const TYPE_SCHEDULE = 'schedule';
+    public const TYPE_SESSION = 'session';
     protected $fillable = [
+        'type',
         'gym_class_id',
         'trainer_id',
         'date',
@@ -25,7 +28,19 @@ class ClassSchedule extends Model
         return [
             'date' => 'date',
             'is_cancelled' => 'boolean',
+            'type' => 'string',
         ];
+    }
+
+    // Scopes
+    public function scopeSessions($query)
+    {
+        return $query->where('type', self::TYPE_SESSION);
+    }
+
+    public function scopeSchedules($query)
+    {
+        return $query->where('type', self::TYPE_SCHEDULE);
     }
 
     // Relations
@@ -58,5 +73,15 @@ class ClassSchedule extends Model
     public function getAvailableSlotsAttribute(): int
     {
         return max(0, $this->capacity - $this->booked_count);
+    }
+
+    public function isSession(): bool
+    {
+        return $this->type === self::TYPE_SESSION;
+    }
+
+    public function isSchedule(): bool
+    {
+        return $this->type === self::TYPE_SCHEDULE;
     }
 }

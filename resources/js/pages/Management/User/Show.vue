@@ -4,7 +4,7 @@ import axios from 'axios';
 import {
     Save, Lock, User as UserIcon, MapPin,
     Phone, Calendar, Loader2,
-    Download, CreditCard, Ticket, Dumbbell, Store, CheckCircle, XCircle, Clock, History, Heart, ImagePlus, Camera, X
+    Download, CreditCard, Ticket, Dumbbell, Store, CheckCircle, XCircle, Clock, History, Heart, ImagePlus, Camera, X, Snowflake, ThermometerSun
 } from 'lucide-vue-next';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import Heading from '@/components/Heading.vue';
@@ -37,21 +37,21 @@ interface Gym {
 const props = defineProps<{
     user: any,
     gyms: Gym[],
-    pendingTransactions: any[]
-    pendingInstallments: any[]
+    pendingTransactions: any[],
+    pendingInstallments: any[],
+    pendingFreezings: any[],
+    userGyms: any[],
 }>();
 
 const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>({});
 const availableMethods = ['manual', 'va', 'qris'] as const;
 const calculateInstallmentTotal = (installment: any) => {
     const method = installmentPaymentMethods.value[installment.id] || 'manual';
-    // PPN disabled - harga sudah termasuk PPN
-    // const base = parseFloat(installment.price) + parseFloat(installment.ppn_fee);
     const base = parseFloat(installment.price);
 
     let fee = 0;
     if (method === 'va') fee = 4000;
-    else if (method === 'qris') fee = base * 0.007; // Sesuai logika code 0.7%
+    else if (method === 'qris') fee = base * 0.007;
 
     return {
         base: base,
@@ -158,6 +158,79 @@ const selectedItem = computed(() => {
     return gymData.value.pt_packages.find(p => p.id === paymentForm.value.selected_item_id);
 });
 
+// Selected user's gym record for the chosen gym
+const selectedUserGym = computed(() => {
+    if (!paymentForm.value.gym_id) return null;
+    return props.userGyms.find((ug: any) => String(ug.gym_id) === String(paymentForm.value.gym_id));
+});
+
+// Helpers untuk Tanggal
+const toISODate = (d: Date | null) => {
+    if (!d) return null;
+    const date = new Date(d);
+    // Mengamankan masalah timezone browser agar format YYYY-MM-DD selalu tepat
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().split('T')[0];
+};
+
+const hasActiveMembershipForSelectedGym = computed(() => {
+    const ug = selectedUserGym.value;
+    if (!ug || !ug.membership_end_at) return false;
+    return new Date(ug.membership_end_at) > new Date();
+});
+
+// LOGIKA BARU: Tentukan apakah input Tanggal Mulai perlu di-render
+const showMembershipDateInput = computed(() => {
+    if (paymentForm.value.transaction_type !== 'membership') return false;
+
+    const ug = selectedUserGym.value;
+    // Tampilkan jika User baru / belum punya record membership sama sekali
+    if (!ug || !ug.membership_end_at) return true;
+
+    const endDate = new Date(ug.membership_end_at);
+    const today = new Date();
+
+    // Set waktu jam/menit ke 00:00 untuk komparasi tanggal yang murni
+    endDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Tampilkan jika Membership berakhir HARI INI atau SUDAH LEWAT
+    if (endDate <= today) return true;
+
+    // Sembunyikan opsi jika Membership masih aktif (dan bukan hari ini selesainya)
+    return false;
+});
+
+// State untuk input Tanggal Mulai
+const membershipStartInput = ref<string | null>(toISODate(new Date()));
+
+// Watcher untuk sinkronisasi kapan paket atau gym berubah
+watch([() => paymentForm.value.gym_id, () => selectedItem.value], () => {
+    if (showMembershipDateInput.value) {
+        // Jika UI input ditampilkan (user baru / berakhir hari ini), set default ke hari ini
+        membershipStartInput.value = toISODate(new Date());
+    } else {
+        // Jika UI disembunyikan (masih aktif), siapkan start_date di background setelah masa aktif habis
+        const ug = selectedUserGym.value;
+        if (ug && ug.membership_end_at) {
+            membershipStartInput.value = toISODate(new Date(ug.membership_end_at));
+        }
+    }
+});
+
+const editableMembershipStartDate = computed(() => {
+    if (membershipStartInput.value) return new Date(membershipStartInput.value);
+    return new Date();
+});
+
+const editableMembershipEndDate = computed(() => {
+    if (!editableMembershipStartDate.value || !selectedItem.value) return null;
+    const days = selectedItem.value.duration_in_days || 0;
+    const start = new Date(editableMembershipStartDate.value);
+    const end = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
+    return end;
+});
+
 const handleManualPayment = (id: number | string, action: 'approve' | 'reject') => {
     const label = action === 'approve' ? 'MENYETUJUI' : 'MENOLAK';
 
@@ -192,17 +265,21 @@ const handleGeneratePayment = async () => {
             promo_code: paymentForm.value.promo_code || null,
         };
 
+        // Otomatis menempelkan parameter start_at dari state watcher di atas
+        if (paymentForm.value.transaction_type === 'membership') {
+            if (membershipStartInput.value) {
+                payload.start_at = membershipStartInput.value;
+            }
+        }
+
         const response = await axios.post('/management/user/generate-payment', payload);
         const data = response.data;
 
-        // LOGIKA BARU: Cek snap_token
         if (data.snap_token) {
             window.snap.pay(data.snap_token, {
                 onSuccess: function (result: any) {
                     console.log('success', result);
                     alert("Pembayaran Berhasil!");
-                    // Opsi: redirect ke halaman transaksi atau reload
-                    // router.visit('/management/user/transactions');
                 },
                 onPending: function (result: any) {
                     console.log('pending', result);
@@ -259,21 +336,14 @@ const calculation = computed(() => {
     });
 
     const subtotal = Math.max(0, basePrice - totalDiscount);
-    // PPN disabled - harga sudah termasuk PPN
-    // const ppn = subtotal * 0.11;
     const ppn = 0;
 
     let fee = 0;
     if (paymentForm.value.payment_type === 'va') fee = 4000;
-    // PPN disabled - fee dihitung dari subtotal saja
-    // else if (paymentForm.value.payment_type === 'qris') fee = (subtotal + ppn) * 0.007;
     else if (paymentForm.value.payment_type === 'qris') fee = subtotal * 0.007;
 
-    // PPN disabled - grandTotal tanpa ppn
-    // const grandTotal = subtotal + ppn + fee;
     const grandTotal = subtotal + fee;
 
-    // 🔥 DP Logic
     let payableNow = grandTotal;
     let remaining = 0;
 
@@ -302,22 +372,17 @@ const calculation = computed(() => {
 
 const activePromos = computed(() => {
     if (!selectedItem.value) return [];
-
-    // 1. Ambil semua promo GLOBAL (sudah difilter dari backend)
     const globals = paymentForm.value.transaction_type === 'membership'
         ? (selectedItem.value.membership_promos || [])
         : (selectedItem.value.pt_package_promos || []);
 
-    // 2. Gabungkan dengan MAKSIMAL SATU promo manual jika ada
     const allPromos = [...globals];
     if (appliedManualPromo.value) {
         allPromos.push(appliedManualPromo.value);
     }
-
     return allPromos;
 });
 
-// Update fungsi verifyPromo agar hanya menyimpan satu promo saja
 const verifyPromo = async () => {
     if (!paymentForm.value.promo_code) return;
     try {
@@ -327,17 +392,87 @@ const verifyPromo = async () => {
             type: paymentForm.value.transaction_type
         });
 
-        // Cek jika promo yang diinput ternyata kodenya 'GLOBAL', 
-        // kita tolak karena sudah terpasang otomatis
         if (res.data.unique_code === null) {
             alert("Promo ini sudah aktif secara otomatis.");
             return;
         }
 
-        appliedManualPromo.value = res.data; // Mengganti promo manual sebelumnya (hanya bisa 1)
+        appliedManualPromo.value = res.data;
         alert("Kode promo berhasil dipasang!");
     } catch (e) {
         alert("Kode promo tidak valid untuk paket ini.");
+    }
+};
+
+const freezeForm = ref({
+    gym_id: '' as string | number,
+    freeze_count: 30,
+});
+const isFreezingLoading = ref(false);
+
+const handleFreeze = async () => {
+    if (!freezeForm.value.gym_id) {
+        notyf.error('Silakan pilih gym terlebih dahulu.');
+        return;
+    }
+    if (!freezeForm.value.freeze_count || freezeForm.value.freeze_count % 30 !== 0) {
+        notyf.error('Jumlah hari freeze harus kelipatan 30.');
+        return;
+    }
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/freeze', {
+            user_id: props.user.id,
+            gym_id: freezeForm.value.gym_id,
+            freeze_count: freezeForm.value.freeze_count,
+        });
+        notyf.success('Transaction freezing berhasil dibuat.');
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses freeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
+    }
+};
+
+const handleUnfreeze = async (gymId: string | number) => {
+    if (!confirm('Apakah Anda yakin ingin meng-unfreeze user di gym ini?')) return;
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/unfreeze', {
+            user_id: props.user.id,
+            gym_id: gymId,
+        });
+        notyf.success('User berhasil di-unfreeze.');
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses unfreeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
+    }
+};
+
+const handleUpdateTransactionFreezing = async (id: number | string, status: 'success' | 'failed') => {
+    const label = status === 'success' ? 'MENYETUJUI' : 'MENOLAK';
+    if (!confirm(`Apakah Anda yakin ingin ${label} transaksi freeze ini?`)) return;
+
+    isFreezingLoading.value = true;
+    try {
+        await axios.post('/management/user/update-transaction-freezing', {
+            transaction_freezing_id: id,
+            status: status,
+        });
+        notyf.success(`Transaksi freeze berhasil ${status === 'success' ? 'disetujui' : 'ditolak'}.`);
+        router.reload({ only: ['pendingFreezings', 'userGyms'] });
+    } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal memproses transaksi freeze.';
+        notyf.error(msg);
+    } finally {
+        isFreezingLoading.value = false;
     }
 };
 
@@ -346,11 +481,10 @@ const breadcrumbItems = [
     { title: 'Edit User', href: '#' },
 ];
 
-// Inisialisasi form dengan data yang ada
 const form = useForm({
     email: props.user.email || '',
     name: props.user.name || '',
-    password: '', // Kosongkan, hanya diisi jika ingin ganti password
+    password: '',
 
     nik: props.user.user_detail?.nik || '',
     birth_place: props.user.user_detail?.birth_place || '',
@@ -363,6 +497,7 @@ const form = useForm({
     emergency_name: props.user.user_detail?.emergency_name || '',
     emergency_phone: props.user.user_detail?.emergency_phone || '',
     emergency_relation: props.user.user_detail?.emergency_relation || '',
+    notes: props.user.user_detail?.notes || '',
 });
 
 const existingPhoto = ref(props.user.user_detail?.photo_url || null);
@@ -443,10 +578,10 @@ const submit = () => {
         headers: { 'X-HTTP-Method-Override': 'PUT' },
     });
 };
+
 const qrRef = ref<InstanceType<typeof QrcodeVue> | null>(null);
 const downloadSVG = () => {
     const svgElement = qrRef.value?.$el;
-
     const serializer = new XMLSerializer();
     let source = serializer.serializeToString(svgElement);
 
@@ -470,7 +605,6 @@ const downloadSVG = () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-
         <Head :title="`Edit User - ${props.user.name}`" />
 
         <div class="min-h-screen bg-muted/40 py-6 md:py-10">
@@ -520,7 +654,6 @@ const downloadSVG = () => {
                                         </div>
                                     </div>
 
-                                    <!-- Photo Section -->
                                     <div class="space-y-2">
                                         <label class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Foto User</label>
                                         <div class="flex flex-col items-center gap-3">
@@ -628,7 +761,6 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
-                            <!-- Emergency Contact Section -->
                             <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
                                 <h3 class="font-semibold flex items-center gap-2 text-foreground">
                                     <Heart :size="18" class="text-primary" />
@@ -657,6 +789,21 @@ const downloadSVG = () => {
                                         <Input v-model="form.emergency_relation" placeholder="Contoh: Orang tua, Saudara"
                                             class="rounded-xl" />
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
+                                <h3 class="font-semibold flex items-center gap-2 text-foreground">
+                                    <MapPin :size="18" class="text-primary" />
+                                    Catatan
+                                </h3>
+                                <hr class="border-muted" />
+
+                                <div class="space-y-2">
+                                    <label
+                                        class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Catatan / Deskripsi</label>
+                                    <Textarea v-model="form.notes" rows="4" placeholder="Catatan tambahan mengenai user (opsional)"
+                                        class="rounded-xl" />
                                 </div>
                             </div>
                         </div>
@@ -720,13 +867,21 @@ const downloadSVG = () => {
                             </div>
 
                             <div v-if="paymentForm.selected_item_id" class="space-y-2">
-                                <label class="text-xs font-bold uppercase text-muted-foreground">
+                                <template v-if="showMembershipDateInput">
+                                    <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai</label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="date" v-model="membershipStartInput" :min="toISODate(new Date())"
+                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+                                        <input type="date" :value="toISODate(editableMembershipEndDate)" disabled
+                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+                                    </div>
+                                </template>
+
+                                <label class="text-xs font-bold uppercase text-muted-foreground mt-4 block">
                                     Metode Pembayaran
                                 </label>
 
                                 <div class="grid grid-cols-3 gap-3">
-
-                                    <!-- Manual -->
                                     <button type="button" @click="paymentForm.payment_type = 'manual'" :class="paymentForm.payment_type === 'manual'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -736,7 +891,6 @@ const downloadSVG = () => {
                                         <div class="text-[10px] opacity-70">Fee 0</div>
                                     </button>
 
-                                    <!-- VA -->
                                     <button type="button" @click="paymentForm.payment_type = 'va'" :class="paymentForm.payment_type === 'va'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -746,7 +900,6 @@ const downloadSVG = () => {
                                         <div class="text-[10px] opacity-70">Fee Rp 4.000</div>
                                     </button>
 
-                                    <!-- QRIS -->
                                     <button type="button" @click="paymentForm.payment_type = 'qris'" :class="paymentForm.payment_type === 'qris'
                                         ? 'bg-primary text-white ring-2 ring-primary'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -755,7 +908,6 @@ const downloadSVG = () => {
                                         QRIS
                                         <div class="text-[10px] opacity-70">Fee 0.7%</div>
                                     </button>
-
                                 </div>
                             </div>
 
@@ -766,8 +918,6 @@ const downloadSVG = () => {
                                 </label>
 
                                 <div class="grid grid-cols-2 gap-3">
-
-                                    <!-- Full Payment -->
                                     <button type="button" @click="paymentForm.payment_mode = 'full_payment'" :class="paymentForm.payment_mode === 'full_payment'
                                         ? 'bg-primary text-white'
                                         : 'bg-muted hover:bg-muted/70'"
@@ -775,7 +925,6 @@ const downloadSVG = () => {
                                         Full Payment
                                     </button>
 
-                                    <!-- DP Payment (Only PT) -->
                                     <button v-if="paymentForm.transaction_type === 'pt'" type="button"
                                         @click="paymentForm.payment_mode = 'dp_payment'" :class="paymentForm.payment_mode === 'dp_payment'
                                             ? 'bg-primary text-white'
@@ -783,10 +932,8 @@ const downloadSVG = () => {
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
                                         DP Payment
                                     </button>
-
                                 </div>
 
-                                <!-- DP Percent Input -->
                                 <div v-if="paymentForm.payment_mode === 'dp_payment'
                                     && paymentForm.transaction_type === 'pt'" class="mt-3">
                                     <label class="text-xs font-medium text-muted-foreground">
@@ -830,12 +977,6 @@ const downloadSVG = () => {
                                 </div>
 
                                 <hr class="border-muted border-dashed" />
-
-                                <!-- PPN disabled - harga sudah termasuk PPN -->
-                                <!-- <div class="flex justify-between text-muted-foreground">
-                                    <span>PPN (11%)</span>
-                                    <span>{{ calculation.ppn.toLocaleString() }}</span>
-                                </div> -->
 
                                 <div class="flex justify-between text-orange-600 italic">
                                     <span>Biaya Layanan ({{ paymentForm.payment_type.toUpperCase() }})</span>
@@ -1000,9 +1141,6 @@ const downloadSVG = () => {
                                 <div class="space-y-1">
                                     <p class="font-bold text-sm">{{ inst.description }}</p>
                                     <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                                        <!-- PPN disabled - harga sudah termasuk PPN -->
-                                        <!-- <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price) +
-                                            parseFloat(inst.ppn_fee)) }}</b></span> -->
                                         <span>Tagihan: <b>{{ formatRupiah(parseFloat(inst.price)) }}</b></span>
                                         <span class="text-red-500">Jatuh Tempo: {{ inst.must_paid_before }}</span>
                                     </div>
@@ -1043,10 +1181,114 @@ const downloadSVG = () => {
                         </div>
                     </div>
                 </div>
+
+                <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6 mt-8">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <Snowflake class="text-cyan-500" :size="20" />
+                            <h3 class="font-bold text-lg">Freeze Membership</h3>
+                        </div>
+                    </div>
+                    <hr class="border-muted" />
+
+                    <div v-if="userGyms.length > 0" class="space-y-3">
+                        <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Status Gym User</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div v-for="ug in userGyms" :key="ug.id"
+                                :class="ug.freezed_at ? 'border-cyan-300 bg-cyan-50/30' : 'border-muted'"
+                                class="p-4 border rounded-xl flex items-center justify-between">
+                                <div class="space-y-1">
+                                    <p class="font-bold text-sm">{{ ug.gym?.name || 'Gym #' + ug.gym_id }}</p>
+                                    <p class="text-xs text-muted-foreground">
+                                        Membership s/d: {{ ug.membership_end_at ? new Date(ug.membership_end_at).toLocaleDateString('id-ID') : '-' }}
+                                    </p>
+                                    <div v-if="ug.freezed_at" class="flex items-center gap-1 text-xs text-cyan-600 font-medium">
+                                        <Snowflake :size="12" />
+                                        Freeze sejak {{ new Date(ug.freezed_at).toLocaleDateString('id-ID') }}
+                                        s/d {{ ug.freezed_end_at ? new Date(ug.freezed_end_at).toLocaleDateString('id-ID') : '-' }}
+                                    </div>
+                                </div>
+                                <button v-if="ug.freezed_at" @click="handleUnfreeze(ug.gym_id)"
+                                    :disabled="isFreezingLoading"
+                                    class="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1">
+                                    <ThermometerSun :size="14" />
+                                    Unfreeze
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Buat Transaksi Freeze</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-muted-foreground">Pilih Gym</label>
+                                <select v-model="freezeForm.gym_id" class="w-full h-10 rounded-xl border px-3 text-sm">
+                                    <option value="" disabled>Pilih gym</option>
+                                    <option v-for="ug in userGyms.filter(u => !u.freezed_at)" :key="ug.gym_id" :value="ug.gym_id">
+                                        {{ ug.gym?.name || 'Gym #' + ug.gym_id }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-muted-foreground">Durasi Freeze (kelipatan 30 hari)</label>
+                                <Input type="number" v-model.number="freezeForm.freeze_count" min="30" step="30" class="rounded-xl" />
+                            </div>
+                            <button type="button" @click="handleFreeze" :disabled="isFreezingLoading"
+                                class="h-10 px-6 bg-cyan-600 text-white rounded-xl font-bold text-sm hover:bg-cyan-700 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                                <Loader2 v-if="isFreezingLoading" :size="16" class="animate-spin" />
+                                <Snowflake v-else :size="16" />
+                                Generate Freeze
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold uppercase text-muted-foreground tracking-wider">Transaksi Freeze Pending</h4>
+                            <span class="bg-cyan-100 text-cyan-700 text-xs px-3 py-1 rounded-full font-bold">
+                                {{ pendingFreezings.length }} Menunggu
+                            </span>
+                        </div>
+
+                        <div v-if="pendingFreezings.length === 0" class="text-center py-6 text-muted-foreground">
+                            <Snowflake :size="32" class="mx-auto mb-2 opacity-20" />
+                            <p class="text-sm">Tidak ada transaksi freeze yang menunggu persetujuan.</p>
+                        </div>
+
+                        <div v-else class="grid grid-cols-1 gap-4">
+                            <div v-for="tf in pendingFreezings" :key="tf.id"
+                                class="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-xl bg-cyan-50/30 border-cyan-100">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono text-xs font-bold text-cyan-600">#{{ tf.id }}</span>
+                                        <span class="text-[10px] bg-white border px-2 py-0.5 rounded font-bold uppercase">{{ tf.gym?.name }}</span>
+                                    </div>
+                                    <p class="font-bold text-sm">Freeze {{ tf.day_freeze }} hari</p>
+                                    <p class="text-xs text-muted-foreground">Total: {{ formatRupiah(tf.total_price) }}</p>
+                                </div>
+
+                                <div class="flex items-center gap-2 mt-4 md:mt-0">
+                                    <button @click="handleUpdateTransactionFreezing(tf.id, 'success')"
+                                        :disabled="isFreezingLoading"
+                                        class="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                        title="Setujui Freeze">
+                                        <CheckCircle :size="18" />
+                                    </button>
+                                    <button @click="handleUpdateTransactionFreezing(tf.id, 'failed')"
+                                        :disabled="isFreezingLoading"
+                                        class="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                        title="Tolak Freeze">
+                                        <XCircle :size="18" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Webcam Modal -->
         <Teleport to="body">
             <div v-if="showWebcam"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"

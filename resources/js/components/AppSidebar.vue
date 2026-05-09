@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { CalendarDays, CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users, BookOpen, ScanLine } from 'lucide-vue-next';
+import { CalendarDays, ClipboardList, CreditCard, Dumbbell, History, LayoutGrid, Package, ShieldCheck, UserCog, Users, BookOpen, ScanLine } from 'lucide-vue-next';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -75,6 +75,12 @@ const managementNavItems: NavItem[] = [
         roles: ["Super Admin", "Admin"]
     },
     {
+        title: "Reschedule",
+        href: '/management/reschedule',
+        icon: CalendarDays,
+        roles: ["Super Admin", "Admin"]
+    },
+    {
         title: "Admin",
         href: management.admin.index(),
         icon: ShieldCheck,
@@ -84,6 +90,12 @@ const managementNavItems: NavItem[] = [
         title: "Personal Trainer",
         href: management.personalTrainer.index(),
         icon: UserCog, 
+        roles: ["Super Admin", "Admin"]
+    },
+    {
+        title: "Check In Member",
+        href: '/management/check-in',
+        icon: ClipboardList,
         roles: ["Super Admin", "Admin"]
     },
 ];

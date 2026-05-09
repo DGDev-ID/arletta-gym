@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Management\ManageAdminController;
+use App\Http\Controllers\Management\ManageCheckInController;
 use App\Http\Controllers\Management\ManagePersonalTrainerController;
 use App\Http\Controllers\Management\ManageUserController;
+use App\Http\Controllers\Management\ManageRescheduleController;
 use App\Http\Controllers\Master\MasterClassScheduleController;
 use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
@@ -67,14 +69,24 @@ Route::middleware(['auth'])->group(function () {
             Route::post('user/generate-installment', [ManageUserController::class, 'generateInstallment'])->name('user.generate-installment');
             Route::post('/user/transactions/{transaction}/manual-action', [ManageUserController::class, 'approveOrRejectManualPayment'])
                 ->name('management.user.transactions.manual-action');
+            Route::post('user/freeze', [ManageUserController::class, 'freeze'])->name('user.freeze');
+            Route::post('user/unfreeze', [ManageUserController::class, 'unfreeze'])->name('user.unfreeze');
+            Route::post('user/update-transaction-freezing', [ManageUserController::class, 'updateTransactionFreezing'])->name('user.update-transaction-freezing');
+            // Reschedule membership start (management)
+            Route::get('reschedule', [ManageRescheduleController::class, 'index'])->name('user.reschedule.index');
+            Route::post('reschedule', [ManageRescheduleController::class, 'update'])->name('user.reschedule.update');
 
             Route::resource('personal-trainer', ManagePersonalTrainerController::class);
+
+            Route::get('check-in', [ManageCheckInController::class, 'index'])->name('check-in.index');
         });
 
         Route::prefix('transaction')->name('transaction.')->group(function () {
             Route::resource('history', HistoryTransactionController::class);
+            Route::get('history-export-csv', [HistoryTransactionController::class, 'exportCsv'])->name('history.export-csv');
             Route::resource('transaction-per-session', TransactionPerSessionController::class);
             Route::get('pos', [TransactionPosController::class, 'index'])->name('pos.index');
+            Route::get('pos/export-csv', [TransactionPosController::class, 'exportCsv'])->name('pos.export-csv');
             Route::post('pos', [TransactionPosController::class, 'store'])->name('pos.store');
             Route::post('pos/{transactionProductOut}/make-success', [TransactionPosController::class, 'makeSuccess'])->name('pos.make-success');
             Route::post('pos/{transactionProductOut}/make-failed', [TransactionPosController::class, 'makeFailed'])->name('pos.make-failed');
@@ -82,6 +94,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');
         Route::post('scan-qr', [ScanQRCodeController::class, 'scan'])->name('scan-qr.scan');
+        Route::get('scan-qr/members', [ScanQRCodeController::class, 'members'])->name('scan-qr.members');
+        Route::get('scan-qr/member/{userId}', [ScanQRCodeController::class, 'memberDetail'])->name('scan-qr.member-detail');
     });
 });
 

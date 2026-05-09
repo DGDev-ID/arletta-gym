@@ -8,7 +8,9 @@ class Transaction extends Model
 {
     protected $fillable = [
         'user_id',
+        // 'trainer_id',
         'unique_id',
+        'start_at',
         'method',
         'method_midtrans_detail',
         'transaction_type',
@@ -23,6 +25,10 @@ class Transaction extends Model
         'description',
         'sessions_or_days',
         'snap_token'
+    ];
+
+    protected $casts = [
+        'start_at' => 'date',
     ];
 
     protected static function booted()

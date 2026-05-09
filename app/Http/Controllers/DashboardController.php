@@ -185,17 +185,22 @@ class DashboardController extends Controller
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             fputcsv($handle, [
+                'No',
                 'ID Transaksi',
                 'Nama Member',
                 'Email',
                 'Tipe Transaksi',
                 'Paket',
                 'Metode Pembayaran',
+                'Harga Dasar',
+                'Biaya Midtrans',
+                'Biaya PPN',
                 'Total Harga',
                 'Status',
                 'Tanggal',
-            ]);
+            ], ';');
 
+            $no = 1;
             foreach ($transactions as $tx) {
                 if ($tx->transaction_type === 'membership') {
                     $package = $tx->membership?->name ?? 'Membership';
@@ -206,16 +211,20 @@ class DashboardController extends Controller
                 }
 
                 fputcsv($handle, [
+                    $no++,
                     $tx->unique_id,
                     $tx->user?->name ?? 'Unknown',
                     $tx->user?->email ?? '',
                     $tx->transaction_type,
                     $package,
                     $tx->method ?? '',
+                    $tx->price,
+                    $tx->midtrans_fee,
+                    $tx->ppn_fee,
                     $tx->total_price,
                     $tx->status,
                     $tx->created_at->format('d/m/Y H:i'),
-                ]);
+                ], ';');
             }
 
             fclose($handle);

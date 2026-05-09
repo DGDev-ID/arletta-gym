@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\TrainerApiController;
 use App\Http\Controllers\Api\GymController;
 use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\Api\CheckPossibleScheduleController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,7 +27,13 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+
+    Route::prefix('/forgot-password')->group(function () {
+        Route::post('/send-otp', [AuthController::class, 'sendOtp']);
+        Route::post('/submit-token', [AuthController::class, 'submitToken']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
+    });
+
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -62,8 +69,8 @@ Route::get('/classes', [ScheduleController::class, 'classes']);
 
 // Verify
 Route::post('/verify/send', [AccountVerificationController::class, 'sendVerification']);
-Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verify'])
-    ->name('verification.verify')
+Route::get('/verify-email/{id}/{hash}', [AccountVerificationController::class, 'verifyEmail'])
+    ->name('api.verification.verify')
     ->middleware('signed');
 
 // ── Authenticated (sanctum) ─────────────────────────────────
@@ -72,7 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/me', [ProfileController::class, 'update']);
     Route::post('/uploads', [ProfileController::class, 'upload']);
     Route::get('/members/me/pt-packages', [ProfileController::class, 'userPtPackages']);
-    Route::get('/members/me/pt-packages/plot-trainer', [ProfileController::class, 'plotTrainerToUserPtPackages']);
+    Route::post('/members/me/pt-packages/plot-trainer', [ProfileController::class, 'plotTrainerToUserPtPackages']);
     // Role-specific profile endpoints for landing
     Route::get('/members/me', [AuthController::class, 'memberMe']);
 
@@ -89,6 +96,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Payments
     Route::post('/payments/create', [PaymentController::class, 'create']);
+
+    // Check scheduling possibility for a membership
+    Route::get('/check-possible-schedule/{membership_id}', [CheckPossibleScheduleController::class, '__invoke']);
 
     // Signatures
     Route::post('/signatures', [SignatureController::class, 'store']);

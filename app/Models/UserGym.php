@@ -9,7 +9,17 @@ class UserGym extends Model
     protected $fillable = [
         'user_id',
         'gym_id',
-        'membership_end_at'
+        'membership_start_at',
+        'membership_end_at',
+        'freezed_at',
+        'freezed_end_at',
+    ];
+
+    protected $casts = [
+        'membership_start_at' => 'datetime',
+        'membership_end_at' => 'datetime',
+        'freezed_at' => 'datetime',
+        'freezed_end_at' => 'datetime',
     ];
 
     public function user() {
