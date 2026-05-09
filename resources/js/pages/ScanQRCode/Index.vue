@@ -11,9 +11,7 @@ import {
     ScanLine,
     XCircle,
 } from 'lucide-vue-next';
-import { ref, computed, watch } from 'vue';
-import { CheckCircle2, Loader2, ScanLine, XCircle } from 'lucide-vue-next';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
 import Heading from '@/components/Heading.vue';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
