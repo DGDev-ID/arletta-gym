@@ -2,7 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
 import { CheckCircle2, Loader2, ScanLine, XCircle } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
 import Heading from '@/components/Heading.vue';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -10,6 +10,79 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+
+// ── Audio (sama seperti arletta-cafe) ─────────────────────────────────────
+let audioCtx: AudioContext | null = null;
+const userHasInteracted = ref(false);
+
+const unlockAudio = () => {
+    userHasInteracted.value = true;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+};
+
+const speak = (text: string) => {
+    if (!userHasInteracted.value) return;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'id-ID';
+        utterance.rate = 1;
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
+/** Beep sukses — nada naik 700 → 900 Hz (pleasant) */
+const playSuccessBeep = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 700;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+    setTimeout(() => {
+        const osc2 = audioCtx!.createOscillator();
+        const gain2 = audioCtx!.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx!.destination);
+        osc2.frequency.value = 900;
+        osc2.type = 'sine';
+        gain2.gain.value = 0.3;
+        osc2.start();
+        osc2.stop(audioCtx!.currentTime + 0.25);
+    }, 300);
+};
+
+/** Beep gagal — nada turun 400 → 250 Hz (warning) */
+const playErrorBeep = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 400;
+    osc.type = 'square';
+    gain.gain.value = 0.25;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
+    setTimeout(() => {
+        const osc2 = audioCtx!.createOscillator();
+        const gain2 = audioCtx!.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx!.destination);
+        osc2.frequency.value = 250;
+        osc2.type = 'square';
+        gain2.gain.value = 0.25;
+        osc2.start();
+        osc2.stop(audioCtx!.currentTime + 0.35);
+    }, 250);
+};
 
 interface Gym {
     id: number;
@@ -77,6 +150,14 @@ const onDetect = async (detectedCodes: any[]) => {
             gym_id: selectedGymId.value,
         });
         scanResult.value = response.data;
+        // Play audio feedback
+        if (scanResult.value?.success) {
+            playSuccessBeep();
+            speak('Verifikasi berhasil. Selamat datang di Arletta Gym, Silakan masuk.');
+        } else {
+            playErrorBeep();
+            speak('Verifikasi gagal. Silakan coba kembali atau Hubungi petugas gym.');
+        }
     } catch (error: any) {
         if (error.response?.data) {
             scanResult.value = error.response.data;
@@ -86,6 +167,9 @@ const onDetect = async (detectedCodes: any[]) => {
                 message: 'Terjadi kesalahan. Silakan coba lagi.',
             };
         }
+        // Play error beep + speak on failure
+        playErrorBeep();
+        speak('Verifikasi gagal. Silakan coba kembali atau Hubungi petugas gym.');
     } finally {
         loading.value = false;
     }
@@ -97,6 +181,16 @@ const resetScan = () => {
     loading.value = false;
     cameraError.value = null;
 };
+
+onMounted(() => {
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+});
 </script>
 
 <template>
@@ -105,6 +199,18 @@ const resetScan = () => {
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-3xl mx-auto px-6 space-y-8">
                 <Heading variant="small" title="Scan QR Code" description="Scan QR code member untuk verifikasi kehadiran di gym." />
+
+                <!-- Audio unlock banner -->
+                <div v-if="!userHasInteracted"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm cursor-pointer select-none"
+                    @click="unlockAudio">
+                    <span class="text-lg">🔔</span>
+                    <span>Klik di sini untuk mengaktifkan notifikasi audio saat scan QR.</span>
+                </div>
+                <div v-else class="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+                    <span class="text-base">🔊</span>
+                    <span>Notifikasi audio aktif — akan berbunyi saat scan berhasil atau gagal.</span>
+                </div>
 
                 <!-- Step 1: Select Gym -->
                 <Card>
