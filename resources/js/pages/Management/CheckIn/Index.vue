@@ -154,6 +154,7 @@ const membershipLabel = (status: string) => {
                                     <th scope="col" class="px-6 py-4">Member</th>
                                     <th scope="col" class="px-6 py-4">Gym</th>
                                     <th scope="col" class="px-6 py-4">Status Membership</th>
+                                    <th scope="col" class="px-6 py-4">Sisa Hari</th>
                                     <th scope="col" class="px-6 py-4">Waktu Check In</th>
                                     <th scope="col" class="px-6 py-4">Keterangan</th>
                                 </tr>
@@ -192,6 +193,14 @@ const membershipLabel = (status: string) => {
                                         </span>
                                     </td>
 
+                                    <!-- Days remaining -->
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span v-if="item.days_remaining !== null && item.days_remaining !== undefined" class="font-medium" :class="item.days_remaining <= 0 ? 'text-red-500' : item.days_remaining <= 7 ? 'text-yellow-500' : 'text-green-600'">
+                                            {{ item.days_remaining <= 0 ? 'Habis' : item.days_remaining + ' hari' }}
+                                        </span>
+                                        <span v-else class="text-muted-foreground">-</span>
+                                    </td>
+
                                     <!-- Check-in time -->
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 inline-flex text-[10px] uppercase tracking-wider font-bold rounded-full border bg-green-100 text-green-800 border-green-200">
@@ -207,7 +216,7 @@ const membershipLabel = (status: string) => {
 
                                 <!-- Empty state -->
                                 <tr v-if="checkIns.data.length === 0">
-                                    <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
                                         <div class="flex flex-col items-center">
                                             <svg class="w-12 h-12 text-muted-foreground/50 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
