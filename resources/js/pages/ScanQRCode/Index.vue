@@ -2,17 +2,104 @@
 import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
 import { debounce } from 'lodash';
-import { AlertTriangle, CheckCircle2, Clock, Eye, Loader2, ScanLine, XCircle } from 'lucide-vue-next';
-import { ref, computed, watch } from 'vue';
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    Eye,
+    Loader2,
+    ScanLine,
+    XCircle,
+} from 'lucide-vue-next';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
 import Heading from '@/components/Heading.vue';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import Input from '@/components/ui/input/Input.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+
+// ── Audio (sama seperti arletta-cafe) ─────────────────────────────────────
+let audioCtx: AudioContext | null = null;
+const userHasInteracted = ref(false);
+
+const unlockAudio = () => {
+    userHasInteracted.value = true;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+};
+
+const speak = (text: string) => {
+    if (!userHasInteracted.value) return;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'id-ID';
+        utterance.rate = 1;
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
+/** Beep sukses — nada naik 700 → 900 Hz (pleasant) */
+const playSuccessBeep = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 700;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+    setTimeout(() => {
+        const osc2 = audioCtx!.createOscillator();
+        const gain2 = audioCtx!.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx!.destination);
+        osc2.frequency.value = 900;
+        osc2.type = 'sine';
+        gain2.gain.value = 0.3;
+        osc2.start();
+        osc2.stop(audioCtx!.currentTime + 0.25);
+    }, 300);
+};
+
+/** Beep gagal — nada turun 400 → 250 Hz (warning) */
+const playErrorBeep = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 400;
+    osc.type = 'square';
+    gain.gain.value = 0.25;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
+    setTimeout(() => {
+        const osc2 = audioCtx!.createOscillator();
+        const gain2 = audioCtx!.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx!.destination);
+        osc2.frequency.value = 250;
+        osc2.type = 'square';
+        gain2.gain.value = 0.25;
+        osc2.start();
+        osc2.stop(audioCtx!.currentTime + 0.35);
+    }, 250);
+};
 
 interface Gym {
     id: number;
@@ -101,7 +188,7 @@ const loadingDetail = ref(false);
 const memberDetail = ref<MemberDetail | null>(null);
 
 const selectedGym = computed(() => {
-    return props.gyms.find(g => g.id === selectedGymId.value);
+    return props.gyms.find((g) => g.id === selectedGymId.value);
 });
 
 // Fetch today's scanned members when gym changes
@@ -113,7 +200,11 @@ const fetchMembers = async (page = 1) => {
     loadingMembers.value = true;
     try {
         const response = await axios.get('/scan-qr/members', {
-            params: { gym_id: selectedGymId.value, search: memberSearch.value, page },
+            params: {
+                gym_id: selectedGymId.value,
+                search: memberSearch.value,
+                page,
+            },
         });
         if (response.data.success) {
             memberRows.value = response.data.data;
@@ -145,7 +236,9 @@ const stopScanning = () => {
 };
 
 const onCameraError = (error: Error) => {
-    cameraError.value = error.message || 'Gagal mengakses kamera. Pastikan izin kamera telah diberikan.';
+    cameraError.value =
+        error.message ||
+        'Gagal mengakses kamera. Pastikan izin kamera telah diberikan.';
     scanning.value = false;
 };
 
@@ -171,6 +264,18 @@ const onDetect = async (detectedCodes: any[]) => {
         if (response.data.success) {
             await fetchMembers(memberPagination.value.current_page);
         }
+        // Play audio feedback
+        if (scanResult.value?.success) {
+            playSuccessBeep();
+            speak(
+                'Verifikasi berhasil. Selamat datang di Arletta Gym, Silakan masuk.',
+            );
+        } else {
+            playErrorBeep();
+            speak(
+                'Verifikasi gagal. Silakan coba kembali atau Hubungi petugas gym.',
+            );
+        }
     } catch (error: any) {
         if (error.response?.data) {
             scanResult.value = error.response.data;
@@ -180,6 +285,11 @@ const onDetect = async (detectedCodes: any[]) => {
                 message: 'Terjadi kesalahan. Silakan coba lagi.',
             };
         }
+        // Play error beep + speak on failure
+        playErrorBeep();
+        speak(
+            'Verifikasi gagal. Silakan coba kembali atau Hubungi petugas gym.',
+        );
     } finally {
         loading.value = false;
     }
@@ -213,29 +323,74 @@ const openDetail = async (userId: number) => {
 
 const membershipBadgeClass = (status: string) => {
     switch (status) {
-        case 'active': return 'bg-green-100 text-green-800 border-green-200';
-        case 'freeze': return 'bg-blue-100 text-blue-700 border-blue-200';
-        case 'expired': return 'bg-red-100 text-red-800 border-red-200';
-        default: return 'bg-muted text-muted-foreground border-border';
+        case 'active':
+            return 'bg-green-100 text-green-800 border-green-200';
+        case 'freeze':
+            return 'bg-blue-100 text-blue-700 border-blue-200';
+        case 'expired':
+            return 'bg-red-100 text-red-800 border-red-200';
+        default:
+            return 'bg-muted text-muted-foreground border-border';
     }
 };
 
 const membershipLabel = (status: string) => {
     switch (status) {
-        case 'active': return 'Aktif';
-        case 'freeze': return 'Freeze';
-        case 'expired': return 'Expired';
-        default: return status;
+        case 'active':
+            return 'Aktif';
+        case 'freeze':
+            return 'Freeze';
+        case 'expired':
+            return 'Expired';
+        default:
+            return status;
     }
 };
+
+onMounted(() => {
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+});
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Scan QR Code" />
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
-                <Heading variant="small" title="Scan QR Code" description="Scan QR code member untuk verifikasi kehadiran di gym." />
+            <div class="mx-auto max-w-7xl space-y-8 px-6">
+                <Heading
+                    variant="small"
+                    title="Scan QR Code"
+                    description="Scan QR code member untuk verifikasi kehadiran di gym."
+                />
+
+                <!-- Audio unlock banner -->
+                <div
+                    v-if="!userHasInteracted"
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 select-none"
+                    @click="unlockAudio"
+                >
+                    <span class="text-lg">🔔</span>
+                    <span
+                        >Klik di sini untuk mengaktifkan notifikasi audio saat
+                        scan QR.</span
+                    >
+                </div>
+                <div
+                    v-else
+                    class="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700"
+                >
+                    <span class="text-base">🔊</span>
+                    <span
+                        >Notifikasi audio aktif — akan berbunyi saat scan
+                        berhasil atau gagal.</span
+                    >
+                </div>
 
                 <!-- Step 1: Select Gym -->
                 <Card>
@@ -245,10 +400,16 @@ const membershipLabel = (status: string) => {
                     <CardContent>
                         <select
                             v-model="selectedGymId"
-                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none"
                         >
-                            <option :value="null" disabled>-- Pilih Gym --</option>
-                            <option v-for="gym in gyms" :key="gym.id" :value="gym.id">
+                            <option :value="null" disabled>
+                                -- Pilih Gym --
+                            </option>
+                            <option
+                                v-for="gym in gyms"
+                                :key="gym.id"
+                                :value="gym.id"
+                            >
                                 {{ gym.name }}
                             </option>
                         </select>
@@ -258,7 +419,7 @@ const membershipLabel = (status: string) => {
                 <!-- Step 2: Scanner -->
                 <Card v-if="selectedGymId">
                     <CardHeader>
-                        <CardTitle class="text-base flex items-center gap-2">
+                        <CardTitle class="flex items-center gap-2 text-base">
                             <ScanLine class="h-5 w-5" />
                             Scanner - {{ selectedGym?.name }}
                         </CardTitle>
@@ -268,34 +429,62 @@ const membershipLabel = (status: string) => {
                         <Alert v-if="cameraError" variant="destructive">
                             <XCircle class="h-4 w-4" />
                             <AlertTitle>Error Kamera</AlertTitle>
-                            <AlertDescription>{{ cameraError }}</AlertDescription>
+                            <AlertDescription>{{
+                                cameraError
+                            }}</AlertDescription>
                         </Alert>
 
                         <!-- QR Scanner View -->
-                        <div v-if="scanning" class="relative rounded-lg overflow-hidden border border-border">
-                            <QrcodeStream @detect="onDetect" @error="onCameraError">
-                                <div class="absolute inset-0 flex items-center justify-center">
-                                    <div class="w-56 h-56 border-2 border-primary rounded-2xl opacity-60" />
+                        <div
+                            v-if="scanning"
+                            class="relative overflow-hidden rounded-lg border border-border"
+                        >
+                            <QrcodeStream
+                                @detect="onDetect"
+                                @error="onCameraError"
+                            >
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <div
+                                        class="h-56 w-56 rounded-2xl border-2 border-primary opacity-60"
+                                    />
                                 </div>
                             </QrcodeStream>
                         </div>
 
                         <!-- Scan Actions -->
                         <div class="flex gap-3">
-                            <Button v-if="!scanning" @click="startScanning" :disabled="loading" class="gap-2">
+                            <Button
+                                v-if="!scanning"
+                                @click="startScanning"
+                                :disabled="loading"
+                                class="gap-2"
+                            >
                                 <ScanLine class="h-4 w-4" />
                                 {{ scanResult ? 'Scan Lagi' : 'Mulai Scan' }}
                             </Button>
-                            <Button v-if="scanning" variant="outline" @click="stopScanning">
+                            <Button
+                                v-if="scanning"
+                                variant="outline"
+                                @click="stopScanning"
+                            >
                                 Berhenti
                             </Button>
-                            <Button v-if="scanResult" variant="outline" @click="resetScan">
+                            <Button
+                                v-if="scanResult"
+                                variant="outline"
+                                @click="resetScan"
+                            >
                                 Reset
                             </Button>
                         </div>
 
                         <!-- Loading -->
-                        <div v-if="loading" class="flex items-center gap-3 text-muted-foreground py-4">
+                        <div
+                            v-if="loading"
+                            class="flex items-center gap-3 py-4 text-muted-foreground"
+                        >
                             <Loader2 class="h-5 w-5 animate-spin" />
                             <span>Memverifikasi member...</span>
                         </div>
@@ -303,60 +492,119 @@ const membershipLabel = (status: string) => {
                         <!-- Scan Result -->
                         <div v-if="scanResult && !loading">
                             <!-- Success -->
-                            <Alert v-if="scanResult.success" class="border-green-500/50 bg-green-500/10 text-green-400">
+                            <Alert
+                                v-if="scanResult.success"
+                                class="border-green-500/50 bg-green-500/10 text-green-400"
+                            >
                                 <CheckCircle2 class="h-4 w-4 !text-green-400" />
-                                <AlertTitle class="text-green-400">Berhasil</AlertTitle>
+                                <AlertTitle class="text-green-400"
+                                    >Berhasil</AlertTitle
+                                >
                                 <AlertDescription class="text-green-400/80">
                                     {{ scanResult.message }}
                                 </AlertDescription>
                             </Alert>
-                            <div v-if="scanResult.success && scanResult.data" class="mt-4 rounded-lg border border-border bg-card p-4 space-y-2">
+                            <div
+                                v-if="scanResult.success && scanResult.data"
+                                class="mt-4 space-y-2 rounded-lg border border-border bg-card p-4"
+                            >
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-muted-foreground">Nama</span>
-                                    <span class="font-medium">{{ scanResult.data.user_name }}</span>
+                                    <span class="text-muted-foreground"
+                                        >Nama</span
+                                    >
+                                    <span class="font-medium">{{
+                                        scanResult.data.user_name
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-muted-foreground">Email</span>
-                                    <span class="font-medium">{{ scanResult.data.user_email }}</span>
+                                    <span class="text-muted-foreground"
+                                        >Email</span
+                                    >
+                                    <span class="font-medium">{{
+                                        scanResult.data.user_email
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-muted-foreground">Gym</span>
-                                    <span class="font-medium">{{ scanResult.data.gym_name }}</span>
+                                    <span class="text-muted-foreground"
+                                        >Gym</span
+                                    >
+                                    <span class="font-medium">{{
+                                        scanResult.data.gym_name
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-muted-foreground">Waktu Scan</span>
-                                    <span class="font-medium">{{ scanResult.data.scanned_at }}</span>
+                                    <span class="text-muted-foreground"
+                                        >Waktu Scan</span
+                                    >
+                                    <span class="font-medium">{{
+                                        scanResult.data.scanned_at
+                                    }}</span>
                                 </div>
                             </div>
 
                             <!-- Membership Reminder -->
-                            <Alert v-if="scanResult.success && scanResult.data?.is_reminder" class="mt-4 border-yellow-500/50 bg-yellow-500/10 text-yellow-400">
-                                <AlertTriangle class="h-4 w-4 !text-yellow-400" />
-                                <AlertTitle class="text-yellow-400">Pengingat Membership</AlertTitle>
+                            <Alert
+                                v-if="
+                                    scanResult.success &&
+                                    scanResult.data?.is_reminder
+                                "
+                                class="mt-4 border-yellow-500/50 bg-yellow-500/10 text-yellow-400"
+                            >
+                                <AlertTriangle
+                                    class="h-4 w-4 !text-yellow-400"
+                                />
+                                <AlertTitle class="text-yellow-400"
+                                    >Pengingat Membership</AlertTitle
+                                >
                                 <AlertDescription class="text-yellow-400/80">
-                                    Sisa membership Anda tinggal {{ scanResult.data.reminder_day }} hari.
+                                    Sisa membership Anda tinggal
+                                    {{ scanResult.data.reminder_day }} hari.
                                 </AlertDescription>
                             </Alert>
 
                             <!-- Activity Log History -->
-                            <div v-if="scanResult.success && scanResult.data?.activity_logs?.length" class="mt-4">
-                                <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
+                            <div
+                                v-if="
+                                    scanResult.success &&
+                                    scanResult.data?.activity_logs?.length
+                                "
+                                class="mt-4"
+                            >
+                                <h4
+                                    class="mb-2 flex items-center gap-2 text-sm font-medium"
+                                >
                                     <Clock class="h-4 w-4" />
                                     Riwayat Scan Terakhir
                                 </h4>
-                                <div class="rounded-lg border border-border bg-card divide-y divide-border">
-                                    <div v-for="(log, index) in scanResult.data.activity_logs" :key="index" class="px-4 py-2 flex justify-between text-sm">
-                                        <span class="text-muted-foreground">{{ log.description }}</span>
-                                        <span class="font-medium text-xs">{{ log.logged_at }}</span>
+                                <div
+                                    class="divide-y divide-border rounded-lg border border-border bg-card"
+                                >
+                                    <div
+                                        v-for="(log, index) in scanResult.data
+                                            .activity_logs"
+                                        :key="index"
+                                        class="flex justify-between px-4 py-2 text-sm"
+                                    >
+                                        <span class="text-muted-foreground">{{
+                                            log.description
+                                        }}</span>
+                                        <span class="text-xs font-medium">{{
+                                            log.logged_at
+                                        }}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Error -->
-                            <Alert v-if="!scanResult.success" variant="destructive">
+                            <Alert
+                                v-if="!scanResult.success"
+                                variant="destructive"
+                            >
                                 <XCircle class="h-4 w-4" />
                                 <AlertTitle>Gagal</AlertTitle>
-                                <AlertDescription>{{ scanResult.message }}</AlertDescription>
+                                <AlertDescription>{{
+                                    scanResult.message
+                                }}</AlertDescription>
                             </Alert>
                         </div>
                     </CardContent>
@@ -364,30 +612,48 @@ const membershipLabel = (status: string) => {
 
                 <!-- Placeholder when no gym selected -->
                 <Card v-else class="border-dashed">
-                    <CardContent class="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-3">
+                    <CardContent
+                        class="flex flex-col items-center justify-center space-y-3 py-12 text-muted-foreground"
+                    >
                         <ScanLine class="h-12 w-12 opacity-40" />
-                        <p class="text-sm">Pilih gym terlebih dahulu untuk mulai scan.</p>
+                        <p class="text-sm">
+                            Pilih gym terlebih dahulu untuk mulai scan.
+                        </p>
                     </CardContent>
                 </Card>
 
                 <!-- Step 3: Member Table -->
                 <Card v-if="selectedGymId">
                     <CardHeader>
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div
+                            class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"
+                        >
                             <CardTitle class="text-base">Data Member</CardTitle>
                             <div class="w-full sm:w-64">
-                                <Input v-model="memberSearch" placeholder="Cari username atau email..." class="rounded-xl" />
+                                <Input
+                                    v-model="memberSearch"
+                                    placeholder="Cari username atau email..."
+                                    class="rounded-xl"
+                                />
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent class="p-0">
-                        <div v-if="loadingMembers" class="flex items-center gap-3 text-muted-foreground py-6 px-6">
+                        <div
+                            v-if="loadingMembers"
+                            class="flex items-center gap-3 px-6 py-6 text-muted-foreground"
+                        >
                             <Loader2 class="h-5 w-5 animate-spin" />
                             <span>Memuat data member...</span>
                         </div>
-                        <div v-else class="rounded-xl border bg-background overflow-hidden">
-                            <table class="w-full text-sm text-left">
-                                <thead class="bg-muted/50 text-muted-foreground font-medium border-b">
+                        <div
+                            v-else
+                            class="overflow-hidden rounded-xl border bg-background"
+                        >
+                            <table class="w-full text-left text-sm">
+                                <thead
+                                    class="border-b bg-muted/50 font-medium text-muted-foreground"
+                                >
                                     <tr>
                                         <th class="px-6 py-4">No</th>
                                         <th class="px-6 py-4">Email</th>
@@ -397,19 +663,52 @@ const membershipLabel = (status: string) => {
                                         <th class="px-6 py-4">Membership Selesai</th>
                                         <th class="px-6 py-4">Sisa Hari</th>
                                         <th class="px-6 py-4">
-                                            <div class="flex justify-center items-center">Aksi</div>
+                                            <div
+                                                class="flex items-center justify-center"
+                                            >
+                                                Aksi
+                                            </div>
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y">
-                                    <tr v-for="(member, index) in memberRows" :key="member.user_id" class="hover:bg-muted/20 transition-colors">
-                                        <td class="px-6 py-4">{{ (memberPagination.current_page - 1) * memberPagination.per_page + index + 1 }}</td>
-                                        <td class="px-6 py-4">{{ member.user_email }}</td>
-                                        <td class="px-6 py-4 font-medium">{{ member.user_name }}</td>
-                                        <td class="px-6 py-4">{{ member.user_role }}</td>
+                                    <tr
+                                        v-for="(member, index) in memberRows"
+                                        :key="member.user_id"
+                                        class="transition-colors hover:bg-muted/20"
+                                    >
                                         <td class="px-6 py-4">
-                                            <span class="px-2 py-1 inline-flex text-[10px] uppercase tracking-wider font-bold rounded-full border" :class="membershipBadgeClass(member.membership_status)">
-                                                {{ membershipLabel(member.membership_status) }}
+                                            {{
+                                                (memberPagination.current_page -
+                                                    1) *
+                                                    memberPagination.per_page +
+                                                index +
+                                                1
+                                            }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {{ member.user_email }}
+                                        </td>
+                                        <td class="px-6 py-4 font-medium">
+                                            {{ member.user_name }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {{ member.user_role }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span
+                                                class="inline-flex rounded-full border px-2 py-1 text-[10px] font-bold tracking-wider uppercase"
+                                                :class="
+                                                    membershipBadgeClass(
+                                                        member.membership_status,
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    membershipLabel(
+                                                        member.membership_status,
+                                                    )
+                                                }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ member.membership_end_at || '-' }}</td>
@@ -420,8 +719,18 @@ const membershipLabel = (status: string) => {
                                             <span v-else class="text-muted-foreground">-</span>
                                         </td>
                                         <td class="px-6 py-4">
-                                            <div class="flex justify-center items-center">
-                                                <button type="button" @click="openDetail(member.user_id)" class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition">
+                                            <div
+                                                class="flex items-center justify-center"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    @click="
+                                                        openDetail(
+                                                            member.user_id,
+                                                        )
+                                                    "
+                                                    class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md bg-blue-100 text-blue-600 transition hover:bg-blue-600 hover:text-white"
+                                                >
                                                     <Eye :size="16" />
                                                 </button>
                                             </div>
@@ -437,27 +746,67 @@ const membershipLabel = (status: string) => {
                         </div>
 
                         <!-- Pagination -->
-                        <div v-if="memberPagination.last_page > 1" class="px-6 py-4 flex justify-end">
-                            <nav class="inline-flex rounded-md shadow-sm -space-x-px">
+                        <div
+                            v-if="memberPagination.last_page > 1"
+                            class="flex justify-end px-6 py-4"
+                        >
+                            <nav
+                                class="inline-flex -space-x-px rounded-md shadow-sm"
+                            >
                                 <button
-                                    :disabled="memberPagination.current_page === 1"
-                                    @click="fetchMembers(memberPagination.current_page - 1)"
-                                    class="px-3 py-2 text-sm border border-gray-300 rounded-l-md"
-                                    :class="memberPagination.current_page === 1 ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100 cursor-pointer'"
-                                >‹</button>
-                                <template v-for="p in memberPagination.last_page" :key="p">
+                                    :disabled="
+                                        memberPagination.current_page === 1
+                                    "
+                                    @click="
+                                        fetchMembers(
+                                            memberPagination.current_page - 1,
+                                        )
+                                    "
+                                    class="rounded-l-md border border-gray-300 px-3 py-2 text-sm"
+                                    :class="
+                                        memberPagination.current_page === 1
+                                            ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                                            : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-100'
+                                    "
+                                >
+                                    ‹
+                                </button>
+                                <template
+                                    v-for="p in memberPagination.last_page"
+                                    :key="p"
+                                >
                                     <button
                                         @click="fetchMembers(p)"
-                                        class="px-3 py-2 text-sm border border-gray-300 cursor-pointer"
-                                        :class="p === memberPagination.current_page ? 'z-10 bg-primary border-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
-                                    >{{ p }}</button>
+                                        class="cursor-pointer border border-gray-300 px-3 py-2 text-sm"
+                                        :class="
+                                            p === memberPagination.current_page
+                                                ? 'z-10 border-primary bg-primary text-white'
+                                                : 'bg-white text-gray-700 hover:bg-gray-100'
+                                        "
+                                    >
+                                        {{ p }}
+                                    </button>
                                 </template>
                                 <button
-                                    :disabled="memberPagination.current_page === memberPagination.last_page"
-                                    @click="fetchMembers(memberPagination.current_page + 1)"
-                                    class="px-3 py-2 text-sm border border-gray-300 rounded-r-md"
-                                    :class="memberPagination.current_page === memberPagination.last_page ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100 cursor-pointer'"
-                                >›</button>
+                                    :disabled="
+                                        memberPagination.current_page ===
+                                        memberPagination.last_page
+                                    "
+                                    @click="
+                                        fetchMembers(
+                                            memberPagination.current_page + 1,
+                                        )
+                                    "
+                                    class="rounded-r-md border border-gray-300 px-3 py-2 text-sm"
+                                    :class="
+                                        memberPagination.current_page ===
+                                        memberPagination.last_page
+                                            ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                                            : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-100'
+                                    "
+                                >
+                                    ›
+                                </button>
                             </nav>
                         </div>
                     </CardContent>
@@ -467,53 +816,93 @@ const membershipLabel = (status: string) => {
 
         <!-- Detail Dialog -->
         <Dialog v-model:open="showDetail">
-            <DialogContent class="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogContent class="max-h-[85vh] max-w-2xl overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Detail Member</DialogTitle>
-                    <DialogDescription>Informasi member dan riwayat log aktivitas scan.</DialogDescription>
+                    <DialogDescription
+                        >Informasi member dan riwayat log aktivitas
+                        scan.</DialogDescription
+                    >
                 </DialogHeader>
 
-                <div v-if="loadingDetail" class="flex items-center gap-3 text-muted-foreground py-8 justify-center">
+                <div
+                    v-if="loadingDetail"
+                    class="flex items-center justify-center gap-3 py-8 text-muted-foreground"
+                >
                     <Loader2 class="h-5 w-5 animate-spin" />
                     <span>Memuat detail member...</span>
                 </div>
 
                 <div v-else-if="memberDetail" class="space-y-6">
                     <!-- User Info -->
-                    <div class="rounded-lg border border-border bg-card p-4 space-y-2">
+                    <div
+                        class="space-y-2 rounded-lg border border-border bg-card p-4"
+                    >
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Nama</span>
-                            <span class="font-medium">{{ memberDetail.user_name }}</span>
+                            <span class="font-medium">{{
+                                memberDetail.user_name
+                            }}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Email</span>
-                            <span class="font-medium">{{ memberDetail.user_email }}</span>
+                            <span class="font-medium">{{
+                                memberDetail.user_email
+                            }}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Role</span>
-                            <span class="font-medium">{{ memberDetail.user_role }}</span>
+                            <span class="font-medium">{{
+                                memberDetail.user_role
+                            }}</span>
                         </div>
-                        <div class="flex justify-between text-sm items-center">
-                            <span class="text-muted-foreground">Status Membership</span>
-                            <span class="px-2 py-1 inline-flex text-[10px] uppercase tracking-wider font-bold rounded-full border" :class="membershipBadgeClass(memberDetail.membership_status)">
-                                {{ membershipLabel(memberDetail.membership_status) }}
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground"
+                                >Status Membership</span
+                            >
+                            <span
+                                class="inline-flex rounded-full border px-2 py-1 text-[10px] font-bold tracking-wider uppercase"
+                                :class="
+                                    membershipBadgeClass(
+                                        memberDetail.membership_status,
+                                    )
+                                "
+                            >
+                                {{
+                                    membershipLabel(
+                                        memberDetail.membership_status,
+                                    )
+                                }}
                             </span>
                         </div>
-                        <div v-if="memberDetail.membership_end_at" class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Membership Berakhir</span>
-                            <span class="font-medium">{{ memberDetail.membership_end_at }}</span>
+                        <div
+                            v-if="memberDetail.membership_end_at"
+                            class="flex justify-between text-sm"
+                        >
+                            <span class="text-muted-foreground"
+                                >Membership Berakhir</span
+                            >
+                            <span class="font-medium">{{
+                                memberDetail.membership_end_at
+                            }}</span>
                         </div>
                     </div>
 
                     <!-- Activity Logs -->
                     <div>
-                        <h4 class="text-sm font-medium mb-3 flex items-center gap-2">
+                        <h4
+                            class="mb-3 flex items-center gap-2 text-sm font-medium"
+                        >
                             <Clock class="h-4 w-4" />
                             Riwayat Log Activity
                         </h4>
-                        <div class="rounded-xl border bg-background overflow-hidden">
-                            <table class="w-full text-sm text-left">
-                                <thead class="bg-muted/50 text-muted-foreground font-medium border-b">
+                        <div
+                            class="overflow-hidden rounded-xl border bg-background"
+                        >
+                            <table class="w-full text-left text-sm">
+                                <thead
+                                    class="border-b bg-muted/50 font-medium text-muted-foreground"
+                                >
                                     <tr>
                                         <th class="px-6 py-4">No</th>
                                         <th class="px-6 py-4">Deskripsi</th>
@@ -521,13 +910,32 @@ const membershipLabel = (status: string) => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y">
-                                    <tr v-for="(log, index) in memberDetail.activity_logs" :key="index" class="hover:bg-muted/20 transition-colors">
-                                        <td class="px-6 py-4">{{ index + 1 }}</td>
-                                        <td class="px-6 py-4">{{ log.description }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap">{{ log.logged_at }}</td>
+                                    <tr
+                                        v-for="(
+                                            log, index
+                                        ) in memberDetail.activity_logs"
+                                        :key="index"
+                                        class="transition-colors hover:bg-muted/20"
+                                    >
+                                        <td class="px-6 py-4">
+                                            {{ index + 1 }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {{ log.description }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            {{ log.logged_at }}
+                                        </td>
                                     </tr>
-                                    <tr v-if="!memberDetail.activity_logs.length">
-                                        <td colspan="3" class="px-6 py-10 text-center text-muted-foreground">
+                                    <tr
+                                        v-if="
+                                            !memberDetail.activity_logs.length
+                                        "
+                                    >
+                                        <td
+                                            colspan="3"
+                                            class="px-6 py-10 text-center text-muted-foreground"
+                                        >
                                             Belum ada riwayat aktivitas.
                                         </td>
                                     </tr>
@@ -537,7 +945,10 @@ const membershipLabel = (status: string) => {
                     </div>
                 </div>
 
-                <div v-else class="text-center text-sm text-muted-foreground py-8">
+                <div
+                    v-else
+                    class="py-8 text-center text-sm text-muted-foreground"
+                >
                     Gagal memuat detail member.
                 </div>
             </DialogContent>
