@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     gymClasses: { id: number; name: string; default_capacity: number; duration_minutes: number }[];
     trainers: { id: number; name: string }[];
 }>();
@@ -22,15 +23,16 @@ const form = useForm({
     start_time: '',
     end_time: '',
     location: '',
-    capacity: 20,
+    capacity: 0,
     zoom_link: '',
 });
 
-const onClassChange = (classId: string) => {
-    // Auto-fill capacity from selected class
-    const gymClasses = document.querySelector<HTMLSelectElement>('[data-classes]');
-    // Manual approach: just rely on user input or pass props
-};
+watch(() => form.gym_class_id, (newId) => {
+    const selected = props.gymClasses.find(cls => cls.id === Number(newId));
+    if (selected) {
+        form.capacity = selected.default_capacity;
+    }
+});
 
 const submit = () => {
     form.post('/master/class-schedule');
@@ -100,7 +102,7 @@ const submit = () => {
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Kapasitas</label>
-                                <Input v-model="form.capacity" type="number" />
+                                <Input v-model="form.capacity" type="number" disabled class="cursor-not-allowed opacity-60" />
                                 <p v-if="form.errors.capacity" class="text-xs text-destructive">{{ form.errors.capacity }}</p>
                             </div>
                         </div>

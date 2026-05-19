@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
@@ -27,6 +28,13 @@ const form = useForm({
     zoom_link: props.schedule.zoom_link ?? '',
     is_cancelled: props.schedule.is_cancelled ?? false,
     cancel_reason: props.schedule.cancel_reason ?? '',
+});
+
+watch(() => form.gym_class_id, (newId) => {
+    const selected = props.gymClasses.find(cls => cls.id === Number(newId));
+    if (selected) {
+        form.capacity = selected.default_capacity;
+    }
 });
 
 const submit = () => {
@@ -96,7 +104,7 @@ const submit = () => {
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium">Kapasitas</label>
-                                <Input v-model="form.capacity" type="number" />
+                                <Input v-model="form.capacity" type="number" disabled class="cursor-not-allowed opacity-60" />
                                 <p v-if="form.errors.capacity" class="text-xs text-destructive">{{ form.errors.capacity }}</p>
                             </div>
                         </div>

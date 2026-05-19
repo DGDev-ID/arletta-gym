@@ -185,12 +185,21 @@ class ScanQRCodeController extends Controller
                 $membershipStatus = 'expired';
             }
 
+            $daysRemaining = null;
+            $membershipEndAt = null;
+            if ($userGym && $userGym->membership_end_at) {
+                $membershipEndAt = Carbon::parse($userGym->membership_end_at)->format('d M Y');
+                $daysRemaining = (int) Carbon::now()->diffInDays(Carbon::parse($userGym->membership_end_at), false);
+            }
+
             return [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'user_email' => $user->email,
                 'user_role' => $user->getRoleNames()->first() ?? '-',
                 'membership_status' => $membershipStatus,
+                'membership_end_at' => $membershipEndAt,
+                'days_remaining' => $daysRemaining,
                 'scanned_at' => $scan->created_at->format('d M Y H:i:s'),
             ];
         })->values();

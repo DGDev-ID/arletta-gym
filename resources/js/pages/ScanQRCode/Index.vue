@@ -38,6 +38,8 @@ interface MemberRow {
     user_email: string;
     user_role: string;
     membership_status: string;
+    membership_end_at: string | null;
+    days_remaining: number | null;
     scanned_at: string;
 }
 
@@ -392,6 +394,8 @@ const membershipLabel = (status: string) => {
                                         <th class="px-6 py-4">Username</th>
                                         <th class="px-6 py-4">Role</th>
                                         <th class="px-6 py-4">Status Membership</th>
+                                        <th class="px-6 py-4">Membership Selesai</th>
+                                        <th class="px-6 py-4">Sisa Hari</th>
                                         <th class="px-6 py-4">
                                             <div class="flex justify-center items-center">Aksi</div>
                                         </th>
@@ -408,6 +412,13 @@ const membershipLabel = (status: string) => {
                                                 {{ membershipLabel(member.membership_status) }}
                                             </span>
                                         </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ member.membership_end_at || '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span v-if="member.days_remaining !== null" class="font-medium" :class="member.days_remaining <= 0 ? 'text-red-500' : member.days_remaining <= 7 ? 'text-yellow-500' : 'text-green-600'">
+                                                {{ member.days_remaining <= 0 ? 'Habis' : member.days_remaining + ' hari' }}
+                                            </span>
+                                            <span v-else class="text-muted-foreground">-</span>
+                                        </td>
                                         <td class="px-6 py-4">
                                             <div class="flex justify-center items-center">
                                                 <button type="button" @click="openDetail(member.user_id)" class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition">
@@ -417,7 +428,7 @@ const membershipLabel = (status: string) => {
                                         </td>
                                     </tr>
                                     <tr v-if="!memberRows.length">
-                                        <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
+                                        <td colspan="8" class="px-6 py-10 text-center text-muted-foreground">
                                             {{ memberSearch ? 'Tidak ada member yang cocok dengan pencarian.' : 'Belum ada data member.' }}
                                         </td>
                                     </tr>
