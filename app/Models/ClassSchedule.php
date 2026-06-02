@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class ClassSchedule extends Model
@@ -12,6 +13,7 @@ class ClassSchedule extends Model
         'type',
         'gym_class_id',
         'trainer_id',
+        'trainer_name',
         'date',
         'start_time',
         'end_time',
@@ -21,6 +23,8 @@ class ClassSchedule extends Model
         'zoom_link',
         'is_cancelled',
         'cancel_reason',
+        'is_recurring',
+        'recurring_day_of_week',
     ];
 
     protected function casts(): array
@@ -28,8 +32,38 @@ class ClassSchedule extends Model
         return [
             'date' => 'date',
             'is_cancelled' => 'boolean',
+            'is_recurring' => 'boolean',
+            'recurring_day_of_week' => 'integer',
             'type' => 'string',
         ];
+    }
+
+    /**
+     * Get the effective trainer name: from user relation or free-text override.
+     */
+    public function getEffectiveTrainerNameAttribute(): ?string
+    {
+        if ($this->trainer_id && $this->trainer) {
+            return $this->trainer->name;
+        }
+
+        return $this->trainer_name;
+    }
+
+    /**
+     * Advance date to the next occurrence of the recurring day and reset booked_count.
+     */
+    public function advanceToNextOccurrence(): void
+    {
+        if (! $this->is_recurring || $this->recurring_day_of_week === null) {
+            return;
+        }
+
+        $next = now()->next(\Carbon\Carbon::getDays()[$this->recurring_day_of_week]);
+        $this->update([
+            'date' => $next->toDateString(),
+            'booked_count' => 0,
+        ]);
     }
 
     // Scopes

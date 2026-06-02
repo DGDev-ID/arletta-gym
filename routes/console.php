@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:check-freezing-user-gyms')->daily();
 Schedule::command('app:check-membership-end-reminder')->daily();
+Schedule::command('schedule:reset-recurring-slots')->dailyAt('00:05');

@@ -3,7 +3,9 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Pencil, Trash2 } from 'lucide-vue-next';
+import { Pencil, Trash2, Users } from 'lucide-vue-next';
+
+const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 defineProps<{
     schedules: {
@@ -62,15 +64,22 @@ const formatDate = (dateStr: string) => {
                                 <th class="px-6 py-4">Lokasi</th>
                                 <th class="px-6 py-4">Kapasitas</th>
                                 <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 text-right">Aksi</th>
+                                <th class="px-6 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
                             <tr v-for="item in schedules.data" :key="item.id" class="hover:bg-muted/20 transition-colors">
-                                <td class="px-6 py-4 font-medium">{{ item.gym_class?.name }}</td>
+                                <td class="px-6 py-4 font-medium">
+                                    {{ item.gym_class?.name }}
+                                    <span v-if="item.is_recurring"
+                                        class="ml-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium"
+                                        :title="`Berulang setiap ${DAY_NAMES[item.recurring_day_of_week] ?? ''}`">
+                                        🔁 {{ DAY_NAMES[item.recurring_day_of_week] ?? '' }}
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4">{{ item.gym_class?.gym?.name }}</td>
                                 <td class="px-6 py-4">
-                                    {{ item.trainer?.name || '-' }}
+                                    {{ item.trainer?.name || item.trainer_name || '-' }}
                                 </td>
                                 <td class="px-6 py-4">{{ formatDate(item.date) }}</td>
                                 <td class="px-6 py-4">{{ item.start_time }} - {{ item.end_time }}</td>
@@ -96,6 +105,11 @@ const formatDate = (dateStr: string) => {
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end items-center gap-3">
+                                        <Link :href="`/master/class-schedule/${item.id}`"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white transition"
+                                            title="Peserta Kelas">
+                                            <Users :size="16" />
+                                        </Link>
                                         <Link :href="`/master/class-schedule/${item.id}/edit`"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
                                             title="Edit Jadwal">
@@ -133,3 +147,4 @@ const formatDate = (dateStr: string) => {
         </div>
     </AppLayout>
 </template>
+
