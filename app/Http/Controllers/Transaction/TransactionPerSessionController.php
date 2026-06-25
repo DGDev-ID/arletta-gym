@@ -15,6 +15,29 @@ use Inertia\Inertia;
 
 class TransactionPerSessionController extends Controller
 {
+    private function applyFilters($query, Request $request, $allowedGymIds)
+    {
+        if ($request->filled('gyms') && !in_array('all', $request->gyms)) {
+            $query->whereIn('gym_id', $request->gyms);
+        } elseif ($allowedGymIds) {
+            $query->whereIn('gym_id', $allowedGymIds);
+        }
+
+        if ($request->filled('statuses') && !in_array('all', $request->statuses)) {
+            $query->whereIn('status', $request->statuses);
+        }
+
+        if ($request->filled('date_start')) {
+            $query->whereDate('created_at', '>=', $request->date_start);
+        }
+
+        if ($request->filled('date_end')) {
+            $query->whereDate('created_at', '<=', $request->date_end);
+        }
+
+        return $query;
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -27,22 +50,25 @@ class TransactionPerSessionController extends Controller
             $gyms = MasterGym::whereIn('id', $allowedGymIds)->select('id', 'name', 'price_per_session')->orderBy('name')->get();
         }
 
-        // Build queries for success / pending and apply gym filter for non-super-admins
-        $successQuery = TransactionPerSession::with('gym')->latest()->where('status', 'success');
-        $pendingQuery = TransactionPerSession::with('gym')->latest()->where('status', 'pending');
+        $query = TransactionPerSession::with('gym');
 
-        if ($allowedGymIds) {
-            $successQuery->whereIn('gym_id', $allowedGymIds);
-            $pendingQuery->whereIn('gym_id', $allowedGymIds);
-        }
+        $query = $this->applyFilters($query, $request, $allowedGymIds);
 
-        $successTransactions = $successQuery->get();
-        $pendingTransactions = $pendingQuery->get();
+        // Sort by pending first, then by latest
+        $query->orderByRaw("FIELD(status, 'pending', 'success', 'failed')")
+              ->latest();
+
+        $transactions = $query->paginate(10)->withQueryString();
 
         return Inertia::render('Transaction/TransactionPerSession/Index', [
             'gyms' => $gyms,
-            'successTransactions' => $successTransactions,
-            'pendingTransactions' => $pendingTransactions,
+            'transactions' => $transactions,
+            'filters' => [
+                'gyms' => $request->gyms ?? ['all'],
+                'statuses' => $request->statuses ?? ['all'],
+                'date_start' => $request->date_start ?? '',
+                'date_end' => $request->date_end ?? '',
+            ],
         ]);
     }
 
@@ -68,6 +94,7 @@ class TransactionPerSessionController extends Controller
             'gym_id' => 'required|exists:master_gyms,id',
             'name' => 'required|string',
             'phone_number' => 'required|string',
+            'transaction_date' => 'nullable|date',
         ]);
 
         $phone = $request->phone_number;
@@ -92,6 +119,7 @@ class TransactionPerSessionController extends Controller
             'phone_number' => $request->phone_number,
             'price' => $price,
             'status' => 'pending',
+            'created_at' => $request->transaction_date ? \Carbon\Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s') : now(),
         ]);
 
         return redirect()->route('transaction.transaction-per-session.index');
