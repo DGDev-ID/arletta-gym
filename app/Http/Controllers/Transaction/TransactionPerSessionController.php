@@ -55,8 +55,14 @@ class TransactionPerSessionController extends Controller
         $query = $this->applyFilters($query, $request, $allowedGymIds);
 
         // Sort by pending first, then by latest
-        $query->orderByRaw("FIELD(status, 'pending', 'success', 'failed')")
-              ->latest();
+        $query->orderByRaw("
+            CASE
+                WHEN status = 'pending' THEN 1
+                WHEN status = 'success' THEN 2
+                WHEN status = 'failed' THEN 3
+                ELSE 4
+            END
+        ")->latest();
 
         $transactions = $query->paginate(10)->withQueryString();
 
