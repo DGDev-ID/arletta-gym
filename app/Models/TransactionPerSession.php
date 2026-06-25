@@ -13,6 +13,7 @@ class TransactionPerSession extends Model
         'phone_number',
         'price',
         'status',
+        'created_at',
     ];
 
     protected $casts = [
