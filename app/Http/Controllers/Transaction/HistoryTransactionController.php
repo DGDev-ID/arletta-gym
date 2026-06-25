@@ -51,6 +51,14 @@ class HistoryTransactionController extends Controller
             $query->whereIn('transaction_type', $request->transaction_types);
         }
 
+        if ($request->filled('date_start')) {
+            $query->whereDate('created_at', '>=', $request->date_start);
+        }
+
+        if ($request->filled('date_end')) {
+            $query->whereDate('created_at', '<=', $request->date_end);
+        }
+
         return $query;
     }
 
@@ -72,6 +80,8 @@ class HistoryTransactionController extends Controller
                 'gyms' => $request->gyms ?? ['all'],
                 'methods' => $request->methods ?? ['all'],
                 'transaction_types' => $request->transaction_types ?? ['all'],
+                'date_start' => $request->date_start ?? '',
+                'date_end' => $request->date_end ?? '',
             ],
         ]);
     }
@@ -136,10 +146,10 @@ class HistoryTransactionController extends Controller
                     $package,
                     $tx->method ?? '',
                     $tx->method_midtrans_detail ?? '-',
-                    $tx->price,
-                    $tx->midtrans_fee,
-                    $tx->ppn_fee,
-                    $tx->total_price,
+                    (int) $tx->price,
+                    (int) $tx->midtrans_fee,
+                    (int) $tx->ppn_fee,
+                    (int) $tx->total_price,
                     $tx->sessions_or_days ?? '-',
                     $tx->status,
                     $tx->created_at?->format('d/m/Y H:i'),

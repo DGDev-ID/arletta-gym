@@ -185,9 +185,9 @@ class TransactionPosController extends Controller
                         $tp->product?->category?->name ?? '-',
                         $tp->product?->gym?->name ?? '-',
                         $tp->quantity,
-                        $tp->buy_price,
-                        $tp->sell_price,
-                        $trx->total_price,
+                        (int) $tp->buy_price,
+                        (int) $tp->sell_price,
+                        (int) $trx->total_price,
                         $trx->status,
                         $trx->created_at?->format('d/m/Y H:i'),
                     ], ';');

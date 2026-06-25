@@ -18,6 +18,8 @@ const props = defineProps<{
         gyms: (string | number)[];
         methods: string[];
         transaction_types: string[];
+        date_start: string;
+        date_end: string;
     };
 }>();
 
@@ -35,6 +37,8 @@ const transactionTypeOptions = [
 const selectedGyms = ref<(string | number)[]>(props.filters.gyms);
 const selectedMethods = ref<string[]>(props.filters.methods);
 const selectedTransactionTypes = ref<string[]>(props.filters.transaction_types);
+const selectedDateStart = ref<string>(props.filters.date_start);
+const selectedDateEnd = ref<string>(props.filters.date_end);
 
 const isAllGyms = computed(() => selectedGyms.value.includes('all'));
 const isAllMethods = computed(() => selectedMethods.value.includes('all'));
@@ -87,6 +91,8 @@ function applyFilters() {
         gyms: selectedGyms.value,
         methods: selectedMethods.value,
         transaction_types: selectedTransactionTypes.value,
+        date_start: selectedDateStart.value,
+        date_end: selectedDateEnd.value,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -98,6 +104,8 @@ function buildExportUrl() {
     selectedGyms.value.forEach(v => params.append('gyms[]', String(v)));
     selectedMethods.value.forEach(v => params.append('methods[]', String(v)));
     selectedTransactionTypes.value.forEach(v => params.append('transaction_types[]', String(v)));
+    if (selectedDateStart.value) params.append('date_start', selectedDateStart.value);
+    if (selectedDateEnd.value) params.append('date_end', selectedDateEnd.value);
     return '/transaction/history-export-csv?' + params.toString();
 }
 
@@ -146,7 +154,7 @@ const showFilter = ref(false);
 
                 <!-- Filter Section -->
                 <div v-if="showFilter" class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6">
                         <!-- Gym Filter -->
                         <div class="space-y-3">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gym</h4>
@@ -203,7 +211,23 @@ const showFilter = ref(false);
                                 </label>
                             </div>
                         </div>
+
+                        <!-- Date Start Filter -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dari Tanggal</h4>
+                            <input type="date" v-model="selectedDateStart"
+                                class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" />
+                        </div>
+
+                        <!-- Date End Filter -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sampai Tanggal</h4>
+                            <input type="date" v-model="selectedDateEnd"
+                                class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" />
+                        </div>
                     </div>
+
+
 
                     <div class="flex justify-end">
                         <button @click="applyFilters"
