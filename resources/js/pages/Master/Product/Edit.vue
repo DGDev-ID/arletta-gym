@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { formatRupiah } from '@/helpers/formatRupiah';
+import { Trash2 } from 'lucide-vue-next';
 
 const props = defineProps<{
     product: any;
@@ -33,6 +35,11 @@ const submit = () => {
 const addStock = () => {
     stockForm.post(`/master/product/${props.product.id}/add-stock`);
 };
+
+const deleteLog = (logId: number) => {
+    if (!confirm('Hapus log ini dan kurangi stok produk?')) return;
+    router.delete(`/master/product/stock-log/${logId}`);
+};
 </script>
 
 <template>
@@ -41,7 +48,7 @@ const addStock = () => {
         <Head title="Edit Product" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6 space-y-8">
+            <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
                     <Heading variant="small" title="Edit Product" description="Perbarui informasi produk." />
@@ -111,17 +118,25 @@ const addStock = () => {
                                 <th class="px-6 py-3 text-right">Quantity</th>
                                 <th class="px-6 py-3 text-right">Buy</th>
                                 <th class="px-6 py-3 text-right">Sell</th>
+                                <th class="px-6 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="log in props.stockLogs" :key="log.id" class="border-t hover:bg-muted/40">
                                 <td class="px-6 py-3">{{ log.created_at }}</td>
                                 <td class="px-6 py-3 text-right">{{ log.quantity }}</td>
-                                <td class="px-6 py-3 text-right">{{ log.buy_price }}</td>
-                                <td class="px-6 py-3 text-right">{{ log.sell_price }}</td>
+                                <td class="px-6 py-3 text-right">{{ formatRupiah(log.buy_price) }}</td>
+                                <td class="px-6 py-3 text-right">{{ formatRupiah(log.sell_price) }}</td>
+                                <td class="px-6 py-3 text-right">
+                                    <button @click="deleteLog(log.id)" type="button"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
+                                        title="Hapus Log">
+                                        <Trash2 :size="14" />
+                                    </button>
+                                </td>
                             </tr>
                             <tr v-if="props.stockLogs.length === 0">
-                                <td colspan="4" class="px-6 py-6 text-center text-muted-foreground">Belum ada log barang masuk.</td>
+                                <td colspan="5" class="px-6 py-6 text-center text-muted-foreground">Belum ada log barang masuk.</td>
                             </tr>
                         </tbody>
                     </table>

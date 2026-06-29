@@ -43,10 +43,16 @@ interface RecentTransaction {
     status: 'pending' | 'success' | 'failed'
 }
 
+interface TopProduct {
+    name: string
+    total_sold: number
+}
+
 const props = defineProps<{
     stats: Stats
     chart_data: ChartData
     recent_transactions: RecentTransaction[]
+    top_products: TopProduct[]
 }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -323,6 +329,57 @@ const revenueChartOptions = computed<any>(() => ({
                         </div>
                     </CardContent>
                 </Card>
+
+            <!-- Top Products Card -->
+            <Card class="border border-zinc-100 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden">
+                <CardHeader class="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <CardTitle class="text-base font-semibold text-zinc-900 dark:text-white">Produk Terlaris</CardTitle>
+                            <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Top 5 produk berdasarkan kasir pembayaran</p>
+                        </div>
+                        <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-900/30 text-orange-500">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+                            </svg>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent class="p-6">
+                    <div v-if="top_products.length > 0" class="space-y-4">
+                        <div
+                            v-for="(product, idx) in top_products"
+                            :key="idx"
+                            class="flex items-center gap-4"
+                        >
+                            <!-- Rank badge -->
+                            <div
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                                :class="idx === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : idx === 1 ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' : idx === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400' : 'bg-zinc-50 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400'"
+                            >
+                                {{ idx + 1 }}
+                            </div>
+                            <!-- Name + bar -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{{ product.name }}</span>
+                                    <span class="ml-3 shrink-0 text-xs font-semibold text-zinc-500 dark:text-zinc-400">{{ product.total_sold }} terjual</span>
+                                </div>
+                                <div class="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <div
+                                        class="h-1.5 rounded-full transition-all duration-500"
+                                        :class="idx === 0 ? 'bg-amber-400' : idx === 1 ? 'bg-zinc-400' : idx === 2 ? 'bg-orange-400' : 'bg-blue-300'"
+                                        :style="{ width: top_products[0].total_sold > 0 ? (product.total_sold / top_products[0].total_sold * 100) + '%' : '0%' }"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+                        Belum ada data produk terjual.
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card class="flex-1 border-0 shadow-sm bg-white dark:bg-zinc-900">
                 <CardHeader class="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">

@@ -23,7 +23,7 @@ const selectedGym = ref(props.selectedGymId ?? (props.gyms && props.gyms[0] ? pr
 
 const cart = ref<Record<number, number>>({});
 
-const form = useForm({ items: [] });
+const form = useForm({ items: [], payment_method: '' });
 
 const products = computed(() => props.products || []);
 
@@ -53,7 +53,8 @@ const dec = (product: any) => {
 
 const openCheckout = ref(false);
 
-const generatePayment = () => {
+const generatePayment = (method: string) => {
+    form.payment_method = method;
     form.items = cartItems.value.map(i => ({ product_id: i.product.id, quantity: i.quantity }));
     form.post('/transaction/pos');
 };
@@ -74,6 +75,7 @@ const successList = computed(() => props.successTransactions.map((t: any, idx: n
     items: t.products?.map((p: any) => `${p.product?.name ?? '-'} x${p.quantity}`).join(', ') || '-',
     totalPrice: t.total_price || 0,
     date: t.created_at,
+    paymentMethod: t.payment_method || '-',
 })));
 
 const exportCsv = () => {
@@ -119,7 +121,7 @@ const exportCsv = () => {
                                     <tr v-for="prod in products" :key="prod.id" class="border-t hover:bg-muted/40 transition">
                                         <td class="px-6 py-4 font-medium">{{ prod.name }}</td>
                                         <td class="px-6 py-4 text-muted-foreground">{{ prod.category?.name || '-' }}</td>
-                                        <td class="px-6 py-4 text-right">{{ prod.sell_price }}</td>
+                                        <td class="px-6 py-4 text-right">{{ formatRupiah(prod.sell_price) }}</td>
                                         <td class="px-6 py-4 text-right">{{ prod.stock }}</td>
                                         <td class="px-6 py-4 text-right">
                                             <div class="flex justify-end items-center gap-3">
@@ -170,7 +172,7 @@ const exportCsv = () => {
                                                 <li v-for="p in trx.products" :key="p.id">{{ p.product?.name }} x {{ p.quantity }}</li>
                                             </ul>
                                         </td>
-                                        <td class="px-6 py-4 text-right">{{ trx.total_price }}</td>
+                                        <td class="px-6 py-4 text-right">{{ formatRupiah(trx.total_price) }}</td>
                                         <td class="px-6 py-4 text-right">
                                             <div class="flex justify-end items-center gap-2">
                                                 <button @click="makeSuccess(trx.id)" class="inline-flex items-center justify-center rounded-xl bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-600 hover:text-white transition">Make Success</button>
@@ -200,6 +202,7 @@ const exportCsv = () => {
                                         <th class="px-6 py-3 text-left">No</th>
                                         <th class="px-6 py-3 text-left">Items</th>
                                         <th class="px-6 py-3 text-left">Total Harga</th>
+                                        <th class="px-6 py-3 text-left">Metode Pembayaran</th>
                                         <th class="px-6 py-3 text-left">Tanggal</th>
                                     </tr>
                                 </thead>
@@ -208,10 +211,16 @@ const exportCsv = () => {
                                         <td class="px-6 py-3">{{ trx.no }}</td>
                                         <td class="px-6 py-3 font-medium">{{ trx.items }}</td>
                                         <td class="px-6 py-3 font-semibold">{{ formatRupiah(trx.totalPrice) }}</td>
+                                        <td class="px-6 py-3">
+                                            <span
+                                                :class="trx.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' : trx.paymentMethod === 'debit' ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'"
+                                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
+                                            >{{ trx.paymentMethod }}</span>
+                                        </td>
                                         <td class="px-6 py-3">{{ new Date(trx.date).toLocaleString('id-ID') }}</td>
                                     </tr>
                                     <tr v-if="successList.length === 0">
-                                        <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
+                                        <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -226,13 +235,13 @@ const exportCsv = () => {
                                 <div v-for="it in cartItems" :key="it.product.id" class="flex justify-between">
                                     <div>
                                         <div class="font-medium">{{ it.product.name }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ it.quantity }} x {{ it.product.sell_price }}</div>
+                                        <div class="text-xs text-muted-foreground">{{ it.quantity }} x {{ formatRupiah(it.product.sell_price) }}</div>
                                     </div>
-                                    <div class="font-medium">{{ (it.product.sell_price * it.quantity).toFixed(2) }}</div>
+                                    <div class="font-medium">{{ formatRupiah(it.product.sell_price * it.quantity) }}</div>
                                 </div>
 
                                 <hr />
-                                <div class="flex justify-between font-semibold mt-2">Total <div>{{ cartTotal.toFixed(2) }}</div></div>
+                                <div class="flex justify-between font-semibold mt-2">Total <div>{{ formatRupiah(cartTotal) }}</div></div>
 
                                 <div class="mt-4 flex gap-2">
                                     <button @click="openCheckout = true" class="flex-1 inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">Checkout</button>
@@ -247,13 +256,24 @@ const exportCsv = () => {
                             <div class="mt-3 space-y-2">
                                 <div v-for="it in cartItems" :key="it.product.id" class="flex justify-between">
                                     <div>{{ it.product.name }} x {{ it.quantity }}</div>
-                                    <div>{{ (it.product.sell_price * it.quantity).toFixed(2) }}</div>
+                                    <div>{{ formatRupiah(it.product.sell_price * it.quantity) }}</div>
                                 </div>
                                 <hr />
-                                <div class="flex justify-between font-semibold">Total <div>{{ cartTotal.toFixed(2) }}</div></div>
-                                <div class="mt-4 flex gap-2">
-                                    <button @click="generatePayment" class="flex-1 inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">Generate Pembayaran</button>
-                                    <button @click="openCheckout = false" class="inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm">Tutup</button>
+                                <div class="flex justify-between font-semibold">Total <div>{{ formatRupiah(cartTotal) }}</div></div>
+
+                                <div class="mt-4">
+                                    <p class="text-sm font-medium text-muted-foreground mb-2">Pilih Metode Pembayaran</p>
+                                    <div class="flex gap-2">
+                                        <button @click="generatePayment('cash')" :disabled="form.processing"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition">
+                                            Cash
+                                        </button>
+                                        <button @click="generatePayment('debit')" :disabled="form.processing"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition">
+                                            Debit
+                                        </button>
+                                    </div>
+                                    <button @click="openCheckout = false" class="mt-2 w-full inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm">Tutup</button>
                                 </div>
                             </div>
                         </div>

@@ -53,6 +53,31 @@ class ManageUserController extends Controller
             });
         });
 
+        // Primary order: role priority (Super Admin, Admin, PT first; User-only last)
+        $query->orderByRaw("
+            CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM model_has_roles mr
+                    JOIN roles r ON r.id = mr.role_id
+                    WHERE mr.model_id = users.id AND mr.model_type = ?
+                    AND r.name = 'Super Admin'
+                ) THEN 1
+                WHEN EXISTS (
+                    SELECT 1 FROM model_has_roles mr
+                    JOIN roles r ON r.id = mr.role_id
+                    WHERE mr.model_id = users.id AND mr.model_type = ?
+                    AND r.name = 'Admin'
+                ) THEN 2
+                WHEN EXISTS (
+                    SELECT 1 FROM model_has_roles mr
+                    JOIN roles r ON r.id = mr.role_id
+                    WHERE mr.model_id = users.id AND mr.model_type = ?
+                    AND r.name = 'Personal Trainer'
+                ) THEN 3
+                ELSE 4
+            END ASC
+        ", [User::class, User::class, User::class]);
+
         // Secondary order
         $query->orderBy('users.created_at', 'asc');
 

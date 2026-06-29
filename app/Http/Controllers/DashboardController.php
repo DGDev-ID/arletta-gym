@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GymPt;
 use App\Models\Transaction;
+use App\Models\TransactionProduct;
 use App\Models\User;
 use App\Models\UserGym;
 use Carbon\Carbon;
@@ -137,6 +138,20 @@ class DashboardController extends Controller
                 ];
             });
 
+        // --- Top Products (from POS success transactions) ---
+        $topProducts = TransactionProduct::with('product')
+            ->where('type', 'out')
+            ->whereHas('transactionOut', fn ($q) => $q->where('status', 'success'))
+            ->select('product_id', \Illuminate\Support\Facades\DB::raw('SUM(quantity) as total_sold'))
+            ->groupBy('product_id')
+            ->orderByDesc('total_sold')
+            ->limit(5)
+            ->get()
+            ->map(fn ($tp) => [
+                'name'       => $tp->product?->name ?? '-',
+                'total_sold' => (int) $tp->total_sold,
+            ]);
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'total_users'          => $totalUsers,
@@ -163,6 +178,7 @@ class DashboardController extends Controller
                 'new_pt'      => $chartNewPt,
             ],
             'recent_transactions' => $recentTransactions,
+            'top_products'        => $topProducts,
         ]);
     }
 

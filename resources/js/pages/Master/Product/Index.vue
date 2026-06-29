@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Pencil, Trash2 } from 'lucide-vue-next';
+import { formatRupiah } from '@/helpers/formatRupiah';
 
 const breadcrumbItems = [
     { title: 'Master Products', href: '/master/product' }
@@ -53,8 +54,8 @@ const deleteProduct = (id: number) => {
                                 <td class="px-6 py-4 font-medium">{{ product.name }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ product.category?.name || '-' }}</td>
                                 <td class="px-6 py-4">{{ product.gym?.name || '-' }}</td>
-                                <td class="px-6 py-4 text-right">{{ product.buy_price }}</td>
-                                <td class="px-6 py-4 text-right">{{ product.sell_price }}</td>
+                                <td class="px-6 py-4 text-right">{{ formatRupiah(product.buy_price) }}</td>
+                                <td class="px-6 py-4 text-right">{{ formatRupiah(product.sell_price) }}</td>
                                 <td class="px-6 py-4 text-right">{{ product.stock }}</td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end items-center gap-3">

@@ -9,6 +9,7 @@ class TransactionProductOut extends Model
     protected $fillable = [
         'total_price',
         'status',
+        'payment_method',
     ];
 
     protected $casts = [

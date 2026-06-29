@@ -123,4 +123,21 @@ class MasterProductController extends Controller
 
         return redirect()->back()->with('success', 'Stok berhasil ditambahkan.');
     }
+
+    public function deleteStockLog(TransactionProduct $stockLog)
+    {
+        if ($stockLog->type !== 'in') {
+            abort(403, 'Hanya log barang masuk yang bisa dihapus.');
+        }
+
+        DB::transaction(function () use ($stockLog) {
+            $product = $stockLog->product;
+            if ($product) {
+                $product->decrement('stock', $stockLog->quantity);
+            }
+            $stockLog->delete();
+        });
+
+        return redirect()->back()->with('success', 'Log barang masuk berhasil dihapus.');
+    }
 }

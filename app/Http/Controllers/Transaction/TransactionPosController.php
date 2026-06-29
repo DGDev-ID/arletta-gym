@@ -68,12 +68,14 @@ class TransactionPosController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:master_products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'payment_method' => 'required|in:cash,debit',
         ]);
 
         DB::transaction(function () use ($request, &$out) {
             $out = TransactionProductOut::create([
                 'total_price' => 0,
                 'status' => 'pending',
+                'payment_method' => $request->payment_method,
             ]);
 
             $totalSell = 0;
@@ -172,6 +174,7 @@ class TransactionPosController extends Controller
                 'Harga Jual',
                 'Total Harga Transaksi',
                 'Status',
+                'Metode Pembayaran',
                 'Tanggal',
             ], ';');
 
@@ -189,6 +192,7 @@ class TransactionPosController extends Controller
                         (int) $tp->sell_price,
                         (int) $trx->total_price,
                         $trx->status,
+                        $trx->payment_method ?? '-',
                         $trx->created_at?->format('d/m/Y H:i'),
                     ], ';');
                 }
