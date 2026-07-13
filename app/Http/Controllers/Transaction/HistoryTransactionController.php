@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterGym;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use \App\Models\Transaction;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -20,7 +22,106 @@ class HistoryTransactionController extends Controller
             'transaction' => $transaction
         ]);
     }
-    
+
+    /**
+     * Resolve gym and item details for a transaction, used by both print and download.
+     */
+    private function resolveInvoiceData(Transaction $transaction): array
+    {
+        $gym = null;
+        $itemDetails = [];
+
+        if ($transaction->transaction_type === 'membership' && $transaction->membership) {
+            $gym = $transaction->membership->gym;
+            $itemDetails[] = [
+                'item_name'     => $transaction->membership->name,
+                'item_price'    => (int) $transaction->price,
+                'item_quantity' => 1,
+                'subtotal'      => (int) $transaction->price,
+            ];
+        } elseif ($transaction->transaction_type === 'full_pt' && $transaction->fullPt) {
+            $gym = $transaction->fullPt->gym;
+            $itemDetails[] = [
+                'item_name'     => $transaction->fullPt->name,
+                'item_price'    => (int) $transaction->price,
+                'item_quantity' => 1,
+                'subtotal'      => (int) $transaction->price,
+            ];
+        } elseif ($transaction->transaction_type === 'installment_pt' && $transaction->installmentPt) {
+            $itemDetails[] = [
+                'item_name'     => 'Personal Training (Cicilan)',
+                'item_price'    => (int) $transaction->price,
+                'item_quantity' => 1,
+                'subtotal'      => (int) $transaction->price,
+            ];
+        } else {
+            $itemDetails[] = [
+                'item_name'     => 'Transaksi',
+                'item_price'    => (int) $transaction->price,
+                'item_quantity' => 1,
+                'subtotal'      => (int) $transaction->price,
+            ];
+        }
+
+        if (!$gym) {
+            $gym = MasterGym::first() ?? (object) ['name' => 'Arletta Gym', 'address' => ''];
+        }
+
+        $totalPrice = (int) $transaction->price;
+        $fee        = (int) (($transaction->midtrans_fee ?? 0) + ($transaction->ppn_fee ?? 0));
+        $totalPay   = (int) $transaction->total_price;
+
+        return compact('gym', 'itemDetails', 'totalPrice', 'fee', 'totalPay');
+    }
+
+    public function printInvoice($id)
+    {
+        $transaction = Transaction::with(['user', 'membership.gym', 'fullPt.gym', 'installmentPt', 'transactionDetails'])
+            ->findOrFail($id);
+
+        ['gym' => $gym, 'itemDetails' => $itemDetails, 'totalPrice' => $totalPrice, 'fee' => $fee, 'totalPay' => $totalPay]
+            = $this->resolveInvoiceData($transaction);
+
+        $payload = [
+            'gym' => [
+                'name'    => $gym->name,
+                'address' => $gym->address ?? '',
+            ],
+            'total_price' => $totalPrice,
+            'fee'         => $fee,
+            'total_pay'   => $totalPay,
+            'item_details' => $itemDetails,
+        ];
+
+        $response = Http::timeout(10)->post('http://localhost:5000/print', $payload);
+
+        if ($response->successful()) {
+            return response()->json(['message' => 'Print job sent successfully.', 'data' => $response->json()]);
+        }
+
+        return response()->json([
+            'message' => 'Failed to send print job.',
+            'status'  => $response->status(),
+        ], 502);
+    }
+
+    public function downloadInvoice($id)
+    {
+        $transaction = Transaction::with(['user', 'membership.gym', 'fullPt.gym', 'installmentPt', 'transactionDetails'])
+            ->findOrFail($id);
+
+        ['gym' => $gym, 'itemDetails' => $itemDetails, 'totalPrice' => $totalPrice, 'fee' => $fee, 'totalPay' => $totalPay]
+            = $this->resolveInvoiceData($transaction);
+
+        $pdf = Pdf::loadView('invoices.transaction', compact(
+            'transaction', 'gym', 'itemDetails', 'totalPrice', 'fee', 'totalPay'
+        ))->setPaper('a4', 'portrait');
+
+        $filename = 'invoice_' . ($transaction->unique_id ?: $transaction->id) . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
     public function update(Request $request, $id) {
         $request->validate([
             'status' => 'required|in:success,failed',
