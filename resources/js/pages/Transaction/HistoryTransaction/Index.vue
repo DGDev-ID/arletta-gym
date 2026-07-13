@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
-import { Eye, Filter, Download } from 'lucide-vue-next';
+import { Eye, Filter, Download, Printer } from 'lucide-vue-next';
 import { formatRupiah } from '@/helpers/formatRupiah';
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -107,6 +107,38 @@ function buildExportUrl() {
     if (selectedDateStart.value) params.append('date_start', selectedDateStart.value);
     if (selectedDateEnd.value) params.append('date_end', selectedDateEnd.value);
     return '/transaction/history-export-csv?' + params.toString();
+}
+
+const printingId = ref<number | null>(null);
+
+function getXsrfToken(): string {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+async function printInvoice(trxRaw: any) {
+    printingId.value = trxRaw.id;
+    try {
+        const response = await fetch(`/transaction/history/${trxRaw.id}/print-invoice`, {
+            method: 'POST',
+            headers: {
+                'X-XSRF-TOKEN': getXsrfToken(),
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        });
+        if (!response.ok) {
+            alert('Gagal mengirim print job ke printer.');
+        }
+    } catch {
+        alert('Gagal terhubung ke printer server.');
+    } finally {
+        printingId.value = null;
+    }
+}
+
+function downloadInvoice(trxRaw: any) {
+    window.open(`/transaction/history/${trxRaw.id}/download-invoice`, '_blank');
 }
 
 const formattedTransactions = computed(() => {
@@ -273,9 +305,17 @@ const showFilter = ref(false);
                                 </td>
                                 <td class="px-6 py-4">{{ trx.method }}</td>
                                 <td class="px-6 py-4">
-                                    <button @click="router.visit(`/transaction/history/${trx.raw.id}`)" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white hover:bg-primary-dark transition cursor-pointer" title="Lihat Detail">
-                                        <Eye :size="18" />
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <button @click="router.visit(`/transaction/history/${trx.raw.id}`)" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white hover:bg-primary-dark transition cursor-pointer" title="Lihat Detail">
+                                            <Eye :size="18" />
+                                        </button>
+                                        <button @click="printInvoice(trx.raw)" :disabled="printingId === trx.raw.id" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-500 text-white hover:bg-amber-600 transition cursor-pointer disabled:opacity-50" title="Print Invoice">
+                                            <Printer :size="18" />
+                                        </button>
+                                        <button @click="downloadInvoice(trx.raw)" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer" title="Download Invoice">
+                                            <Download :size="18" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="formattedTransactions.length === 0">

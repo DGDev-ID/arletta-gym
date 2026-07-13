@@ -89,6 +89,8 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('transaction')->name('transaction.')->group(function () {
             Route::resource('history', HistoryTransactionController::class);
             Route::get('history-export-csv', [HistoryTransactionController::class, 'exportCsv'])->name('history.export-csv');
+            Route::post('history/{id}/print-invoice', [HistoryTransactionController::class, 'printInvoice'])->name('history.print-invoice');
+            Route::get('history/{id}/download-invoice', [HistoryTransactionController::class, 'downloadInvoice'])->name('history.download-invoice');
             Route::resource('transaction-per-session', TransactionPerSessionController::class);
             Route::get('pos', [TransactionPosController::class, 'index'])->name('pos.index');
             Route::get('pos/export-csv', [TransactionPosController::class, 'exportCsv'])->name('pos.export-csv');
