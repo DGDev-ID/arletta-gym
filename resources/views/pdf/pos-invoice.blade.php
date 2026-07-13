@@ -1,366 +1,271 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ $transaction->id }}</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice #{{ str_pad($transaction->id, 5, '0', STR_PAD_LEFT) }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: DejaVu Sans, sans-serif;
             font-size: 13px;
-            color: #2b2f33;
-            background-color: #ffffff;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .page {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 48px 56px 40px;
-        }
-
-        table { border-collapse: collapse; }
-        table td { vertical-align: top; }
-
-        /* ── Header ── */
-        .header-top {
-            width: 100%;
-            border-bottom: 3px solid #1a1a1a;
-        }
-
-        .header-top td { vertical-align: middle; }
-
-        .brand-name {
-            font-size: 21px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
             color: #1a1a1a;
+            background: #fff;
+            padding: 40px;
         }
-
-        .brand-tag {
-            font-size: 11.5px;
-            font-weight: 600;
-            color: #8a9199;
-            margin-top: 4px;
-            line-height: 1.5;
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 32px;
         }
-
-        .invoice-word {
-            font-size: 26px;
-            font-weight: 800;
-            letter-spacing: 3px;
-            color: #e21f28;
-            text-transform: uppercase;
+        .header-left {
+            display: table-cell;
+            vertical-align: top;
+        }
+        .header-right {
+            display: table-cell;
+            vertical-align: top;
             text-align: right;
         }
-
-        /* ── Meta Bar (No, Date, Payment, Status) ── */
-        .meta-bar {
-            background: #f7f7f7;
-            border-radius: 8px;
-            padding: 18px 24px;
-            margin: 24px 0 32px;
+        .gym-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #111;
         }
-
-        .meta-bar table {
+        .gym-address {
+            font-size: 12px;
+            color: #555;
+            margin-top: 4px;
+        }
+        .invoice-title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 1px;
+        }
+        .invoice-meta {
+            font-size: 12px;
+            color: #555;
+            margin-top: 4px;
+        }
+        .divider {
+            border: none;
+            border-top: 2px solid #e5e7eb;
+            margin: 20px 0;
+        }
+        .info-grid {
+            display: table;
             width: 100%;
+            margin-bottom: 28px;
         }
-
-        .meta-bar td {
-            padding: 6px 0;
+        .info-col {
+            display: table-cell;
             width: 50%;
+            vertical-align: top;
         }
-
-        .meta-label {
-            display: block;
-            color: #8a9199;
-            font-weight: 600;
-            font-size: 10.5px;
+        .info-label {
+            font-size: 11px;
+            color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
-
-        .meta-value {
-            display: block;
-            font-weight: 700;
-            color: #1a1a1a;
-            font-size: 13.5px;
+        .info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 12px;
         }
-
-        .align-right { text-align: right; }
-
-        /* ── Status badge ── */
         .status-badge {
             display: inline-block;
-            padding: 4px 14px;
-            border-radius: 20px;
+            padding: 3px 12px;
+            border-radius: 12px;
             font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            font-weight: bold;
             text-transform: uppercase;
         }
-
-        .status-paid,
-        .status-success  { background: #e3f5ec; color: #0f7a4b; }
-        .status-pending   { background: #fef3e2; color: #b9740b; }
-        .status-unpaid,
-        .status-failed    { background: #fdeaea; color: #c0362c; }
-        .status-default   { background: #eef0f2; color: #52585e; }
-
-        /* ── Info Split (Ditagihkan Kepada / Diterbitkan Oleh) ── */
-        .info-split {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        .info-split td {
-            width: 50%;
-        }
-
-        .info-title {
-            font-size: 11px;
-            font-weight: 800;
-            margin-bottom: 8px;
-            color: #8a9199;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
-
-        .info-value {
-            font-weight: 700;
-            color: #1a1a1a;
-            font-size: 14px;
-        }
-
-        /* ── Table Items ── */
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-failed  { background: #fee2e2; color: #991b1b; }
         table.items {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
-
         table.items thead tr {
-            background: #1a1a1a;
+            background: #f3f4f6;
         }
-
-        table.items thead th {
+        table.items th {
+            padding: 10px 12px;
             text-align: left;
             font-size: 11px;
-            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
-            color: #ffffff;
-            padding: 11px 16px;
+            color: #6b7280;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e5e7eb;
         }
-
-        table.items thead th:first-child { border-radius: 6px 0 0 6px; }
-        table.items thead th:last-child  { border-radius: 0 6px 6px 0; }
-
-        table.items tbody td {
-            padding: 14px 16px;
+        table.items td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
             font-size: 13px;
-            color: #2b2f33;
-            border-bottom: 1px solid #eceef0;
-            vertical-align: middle;
+            color: #1a1a1a;
         }
-
-        table.items tbody tr:nth-child(even) {
-            background: #fafbfb;
+        table.items td.right, table.items th.right {
+            text-align: right;
         }
-
-        table.items tbody tr:last-child td {
-            border-bottom: none;
+        table.items td.center, table.items th.center {
+            text-align: center;
         }
-
-        .text-right { text-align: right !important; }
-        .text-center { text-align: center !important; }
-
-        /* ── Totals ── */
-        .totals-wrap {
-            width: 50%;
-            margin-left: 50%;
+        .totals {
+            margin-left: auto;
+            width: 320px;
         }
-
-        .totals-wrap table {
+        .totals-row {
+            display: table;
             width: 100%;
+            padding: 5px 0;
         }
-
-        .total-row td {
-            padding: 8px 0;
-            font-size: 13px;
-            font-weight: 600;
+        .totals-label {
+            display: table-cell;
+            font-size: 12px;
             color: #6b7280;
         }
-
-        .total-row .amount {
-            color: #2b2f33;
-            font-weight: 700;
+        .totals-value {
+            display: table-cell;
             text-align: right;
+            font-size: 13px;
+            font-weight: 600;
         }
-
-        .total-row.final td {
-            font-weight: 800;
+        .totals-divider {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 6px 0;
+        }
+        .totals-grand {
+            display: table;
+            width: 100%;
+            padding: 8px 0;
+        }
+        .totals-grand-label {
+            display: table-cell;
             font-size: 14px;
-            color: #ffffff;
-            padding: 14px 16px;
+            font-weight: bold;
+            color: #111;
         }
-
-        .total-row.final {
-            background: #e21f28;
-            rounded: 8px;
-            border-radius: 8px;
-        }
-
-        .total-row.final .label {
-            color: #fbd7d9;
-        }
-
-        .total-row.final .amount {
-            color: #ffffff;
+        .totals-grand-value {
+            display: table-cell;
             text-align: right;
+            font-size: 16px;
+            font-weight: bold;
+            color: #111;
         }
-
-        /* ── Bottom note ── */
-        .thank-you {
+        .footer {
+            margin-top: 48px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 16px;
+            font-size: 11px;
+            color: #9ca3af;
             text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #eceef0;
-            color: #8a9199;
-            font-size: 11.5px;
-        }
-
-        .thank-you strong {
-            display: block;
-            color: #1a1a1a;
-            font-size: 14px;
-            margin-bottom: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="page">
 
-        {{-- Header --}}
-        <table class="header-top">
-            <tr>
-                <td style="width: 60%;">
-                    <div class="brand-name">{{ $gymName }}</div>
-                    <div class="brand-tag">{!! nl2br(e($gymAddress)) !!}</div>
-                </td>
-                <td style="width: 40%;">
-                    <div class="invoice-word">Invoice</div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- Meta Bar --}}
-        @php
-            $statusKey = strtolower($transaction->status);
-            $statusClass = match(true) {
-                str_contains($statusKey, 'success') || (str_contains($statusKey, 'paid') && !str_contains($statusKey, 'unpaid')) => 'status-success',
-                str_contains($statusKey, 'pending') => 'status-pending',
-                str_contains($statusKey, 'unpaid') || str_contains($statusKey, 'fail') => 'status-unpaid',
-                default => 'status-default',
-            };
-        @endphp
-        <div class="meta-bar">
-            <table>
-                <tr>
-                    <td>
-                        <span class="meta-label">Invoice Date</span>
-                        <span class="meta-value">{{ $transaction->created_at->format('d M Y') }}</span>
-                    </td>
-                    <td class="align-right">
-                        <span class="meta-label">Status</span>
-                        <span class="status-badge {{ $statusClass }}">{{ ucfirst($transaction->status) }}</span>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <span class="meta-label">Payment Method</span>
-                        <span class="meta-value">{{ strtoupper($transaction->payment_method ?? '-') }}</span>
-                    </td>
-                    <td class="align-right">
-                        <span class="meta-label">No. Invoice</span>
-                        <span class="meta-value">#{{ str_pad($transaction->id, 5, '0', STR_PAD_LEFT) }}</span>
-                    </td>
-                </tr>
-            </table>
+    {{-- Header --}}
+    <div class="header">
+        <div class="header-left">
+            <div class="gym-name">{{ $gymName }}</div>
+            <div class="gym-address">{{ $gymAddress }}</div>
         </div>
-
-        {{-- Info Split --}}
-        <table class="info-split">
-            <tr>
-                <td>
-                    <div class="info-title">Ditagihkan Kepada</div>
-                    <div class="info-value">{{ $transaction->member->name ?? $transaction->customer_name ?? 'Member' }}</div>
-                </td>
-                <td class="align-right">
-                    <div class="info-title">Diterbitkan Oleh</div>
-                    <div class="info-value">{{ $gymName }}</div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- Items Table --}}
-        <table class="items">
-            <thead>
-                <tr>
-                    <th style="width: 45%;">Deskripsi</th>
-                    <th class="text-right" style="width: 25%;">Harga</th>
-                    <th class="text-center" style="width: 10%;">Qty</th>
-                    <th class="text-right" style="width: 20%;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($transaction->products as $tp)
-                <tr>
-                    <td>
-                        <strong style="color: #1a1a1a;">{{ $tp->product?->name ?? '-' }}</strong>
-                        @if($tp->product?->category?->name)
-                            <div style="font-size:11px; color:#8a9199; margin-top:3px;">{{ $tp->product->category->name }}</div>
-                        @endif
-                    </td>
-                    <td class="text-right">Rp {{ number_format($tp->sell_price / max($tp->quantity, 1), 0, ',', '.') }}</td>
-                    <td class="text-center">{{ $tp->quantity }}</td>
-                    <td class="text-right" style="font-weight: 700; color: #1a1a1a;">Rp {{ number_format($tp->sell_price, 0, ',', '.') }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        {{-- Totals --}}
-        <div class="totals-wrap">
-            <table>
-                <tr class="total-row">
-                    <td class="label">Subtotal</td>
-                    <td class="amount">Rp {{ number_format($totalPrice, 0, ',', '.') }}</td>
-                </tr>
-                <tr class="total-row">
-                    <td class="label">Biaya Layanan</td>
-                    <td class="amount">Rp {{ number_format($fee, 0, ',', '.') }}</td>
-                </tr>
-                <tr class="total-row final">
-                    <td class="label">Total Bayar</td>
-                    <td class="amount">Rp {{ number_format($totalPay, 0, ',', '.') }}</td>
-                </tr>
-            </table>
+        <div class="header-right">
+            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-meta">#{{ str_pad($transaction->id, 5, '0', STR_PAD_LEFT) }}</div>
+            <div class="invoice-meta">{{ $transaction->created_at->format('d M Y, H:i') }}</div>
         </div>
-
-        {{-- Thank you note --}}
-        <div class="thank-you">
-            <strong>Terima kasih atas kepercayaan Anda!</strong>
-            Invoice ini dibuat secara otomatis oleh sistem {{ $gymName }}.
-        </div>
-
     </div>
+
+    <hr class="divider" />
+
+    {{-- Transaction Info --}}
+    <div class="info-grid">
+        <div class="info-col">
+            <div class="info-label">Gym</div>
+            <div class="info-value">{{ $gymName }}</div>
+
+            <div class="info-label">Alamat</div>
+            <div class="info-value">{{ $gymAddress }}</div>
+        </div>
+        <div class="info-col" style="text-align: right;">
+            <div class="info-label">Metode Pembayaran</div>
+            <div class="info-value">{{ strtoupper($transaction->payment_method ?? '-') }}</div>
+
+            <div class="info-label">Status</div>
+            <div class="info-value">
+                @if($transaction->status === 'success')
+                    <span class="status-badge status-success">Paid</span>
+                @elseif($transaction->status === 'pending')
+                    <span class="status-badge status-pending">Pending</span>
+                @else
+                    <span class="status-badge status-failed">Failed</span>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- Item Details Table --}}
+    <table class="items">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Nama Produk</th>
+                <th class="right">Harga Satuan</th>
+                <th class="right">Qty</th>
+                <th class="right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($transaction->products as $idx => $tp)
+            <tr>
+                <td>{{ $idx + 1 }}</td>
+                <td>
+                    {{ $tp->product?->name ?? '-' }}
+                    @if($tp->product?->category?->name)
+                        <br><span style="font-size:11px; color:#9ca3af;">{{ $tp->product->category->name }}</span>
+                    @endif
+                </td>
+                <td class="right">Rp {{ number_format($tp->sell_price / max($tp->quantity, 1), 0, ',', '.') }}</td>
+                <td class="right">{{ $tp->quantity }}</td>
+                <td class="right">Rp {{ number_format($tp->sell_price, 0, ',', '.') }}</td>
+            </tr>
+            @endforeach
+            @if($transaction->products->isEmpty())
+            <tr>
+                <td colspan="5" style="text-align:center; color:#9ca3af;">Tidak ada item</td>
+            </tr>
+            @endif
+        </tbody>
+    </table>
+
+    {{-- Totals --}}
+    <div class="totals">
+        <div class="totals-row">
+            <span class="totals-label">Harga Dasar</span>
+            <span class="totals-value">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
+        </div>
+        <div class="totals-row">
+            <span class="totals-label">Biaya Layanan</span>
+            <span class="totals-value">Rp {{ number_format($fee, 0, ',', '.') }}</span>
+        </div>
+        <hr class="totals-divider" />
+        <div class="totals-grand">
+            <span class="totals-grand-label">Total Pembayaran</span>
+            <span class="totals-grand-value">Rp {{ number_format($totalPay, 0, ',', '.') }}</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        Dokumen ini digenerate secara otomatis &mdash; {{ $gymName }} &mdash; {{ now()->format('d M Y H:i') }}
+    </div>
+
 </body>
 </html>

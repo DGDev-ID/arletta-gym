@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import { Notyf } from 'notyf';
+import 'notyf/notyf.min.css';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
@@ -24,6 +26,13 @@ const selectedGym = ref(props.selectedGymId ?? (props.gyms && props.gyms[0] ? pr
 const cart = ref<Record<number, number>>({});
 
 const form = useForm({ items: [], payment_method: '' });
+
+const notyf = new Notyf({
+    duration: 3000,
+    position: { x: 'right', y: 'bottom' },
+    ripple: true,
+    dismissible: true,
+});
 
 const products = computed(() => props.products || []);
 
@@ -111,9 +120,9 @@ const printInvoice = async (trx: any) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        alert('Print berhasil dikirim ke printer.');
+        notyf.success('Print berhasil dikirim ke printer.');
     } catch {
-        alert('Gagal mengirim ke printer. Pastikan print server aktif di localhost:5000.');
+        notyf.error('Gagal mengirim ke printer. Pastikan print server aktif di localhost:5000.');
     }
 };
 
