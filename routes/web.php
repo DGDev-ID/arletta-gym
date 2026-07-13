@@ -95,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('pos', [TransactionPosController::class, 'store'])->name('pos.store');
             Route::post('pos/{transactionProductOut}/make-success', [TransactionPosController::class, 'makeSuccess'])->name('pos.make-success');
             Route::post('pos/{transactionProductOut}/make-failed', [TransactionPosController::class, 'makeFailed'])->name('pos.make-failed');
+            Route::get('pos/{transactionProductOut}/invoice-pdf', [TransactionPosController::class, 'downloadInvoice'])->name('pos.invoice-pdf');
         });
 
         Route::get('scan-qr', [ScanQRCodeController::class, 'index'])->name('scan-qr.index');

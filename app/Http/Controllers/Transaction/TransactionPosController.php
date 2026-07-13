@@ -8,6 +8,7 @@ use App\Models\MasterProduct;
 use App\Models\GymAdmin;
 use App\Models\TransactionProductOut;
 use App\Models\TransactionProduct;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,7 +46,7 @@ class TransactionPosController extends Controller
 
         $pendingTransactions = $pendingQuery->latest()->get();
 
-        $successQuery = TransactionProductOut::where('status', 'success')->with(['products.product.category']);
+        $successQuery = TransactionProductOut::where('status', 'success')->with(['products.product.category', 'products.product.gym']);
         if ($allowedGymIds) {
             $successQuery->whereHas('products.product', function ($q) use ($allowedGymIds) {
                 $q->whereIn('gym_id', $allowedGymIds);
@@ -202,5 +203,34 @@ class TransactionPosController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    public function downloadInvoice(Request $request, TransactionProductOut $transactionProductOut)
+    {
+        $transactionProductOut->load(['products.product.category', 'products.product.gym']);
+
+        // Resolve gym info from the first product's gym
+        $firstProduct = $transactionProductOut->products->first();
+        $gym = $firstProduct?->product?->gym;
+
+        $gymName    = $gym?->name    ?? config('app.name', 'Arletta Gym');
+        $gymAddress = $gym?->address ?? '-';
+
+        $totalPrice = (int) $transactionProductOut->total_price;
+        $fee        = 0;
+        $totalPay   = $totalPrice + $fee;
+
+        $pdf = pdf::loadView('pdf.pos-invoice', [
+            'transaction' => $transactionProductOut,
+            'gymName'     => $gymName,
+            'gymAddress'  => $gymAddress,
+            'totalPrice'  => $totalPrice,
+            'fee'         => $fee,
+            'totalPay'    => $totalPay,
+        ])->setPaper('a5', 'portrait');
+
+        $filename = 'invoice-' . str_pad($transactionProductOut->id, 5, '0', STR_PAD_LEFT) . '.pdf';
+
+        return $pdf->download($filename);
     }
 }
