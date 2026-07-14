@@ -6,6 +6,8 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { Eye, Filter, Download, Printer } from 'lucide-vue-next';
 import { formatRupiah } from '@/helpers/formatRupiah';
+import { Notyf } from 'notyf';
+import 'notyf/notyf.min.css';
 
 const breadcrumbItems: BreadcrumbItem[] = [
     { title: 'History Transaction', href: '/transaction/history' },
@@ -109,6 +111,8 @@ function buildExportUrl() {
     return '/transaction/history-export-csv?' + params.toString();
 }
 
+const notyf = new Notyf({ duration: 3000, position: { x: 'right', y: 'bottom' } });
+
 const printingId = ref<number | null>(null);
 
 function getXsrfToken(): string {
@@ -130,7 +134,7 @@ async function printInvoice(trxRaw: any) {
         });
 
         if (!response.ok) {
-            alert('Gagal mengambil data invoice dari server.');
+            notyf.error('Gagal mengambil data invoice dari server.');
             return;
         }
 
@@ -143,9 +147,9 @@ async function printInvoice(trxRaw: any) {
             body: JSON.stringify(payload),
         });
 
-        alert('Print berhasil dikirim ke printer.');
+        notyf.success('Print berhasil dikirim ke printer.');
     } catch {
-        alert('Gagal terhubung ke printer server. Pastikan print server aktif di localhost:5000.');
+        notyf.error('Gagal terhubung ke printer server. Pastikan print server aktif di localhost:5000.');
     } finally {
         printingId.value = null;
     }
