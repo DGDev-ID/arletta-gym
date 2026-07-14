@@ -7,7 +7,6 @@ use App\Models\MasterGym;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use \App\Models\Transaction;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -87,22 +86,13 @@ class HistoryTransactionController extends Controller
                 'name'    => $gym->name,
                 'address' => $gym->address ?? '',
             ],
-            'total_price' => $totalPrice,
-            'fee'         => $fee,
-            'total_pay'   => $totalPay,
+            'total_price'  => $totalPrice,
+            'fee'          => $fee,
+            'total_pay'    => $totalPay,
             'item_details' => $itemDetails,
         ];
 
-        $response = Http::timeout(10)->post('http://localhost:5000/print', $payload);
-
-        if ($response->successful()) {
-            return response()->json(['message' => 'Print job sent successfully.', 'data' => $response->json()]);
-        }
-
-        return response()->json([
-            'message' => 'Failed to send print job.',
-            'status'  => $response->status(),
-        ], 502);
+        return response()->json($payload);
     }
 
     public function downloadInvoice($id)
