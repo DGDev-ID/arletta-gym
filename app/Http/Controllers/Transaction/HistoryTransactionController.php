@@ -86,6 +86,7 @@ class HistoryTransactionController extends Controller
                 'name'    => $gym->name,
                 'address' => $gym->address ?? '',
             ],
+            'payment_method' => ucfirst($transaction->method ?? 'manual'),
             'total_price'  => $totalPrice,
             'fee'          => $fee,
             'total_pay'    => $totalPay,

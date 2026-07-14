@@ -119,6 +119,7 @@ function getXsrfToken(): string {
 async function printInvoice(trxRaw: any) {
     printingId.value = trxRaw.id;
     try {
+        // Step 1: Ambil payload invoice dari Laravel backend
         const response = await fetch(`/transaction/history/${trxRaw.id}/print-invoice`, {
             method: 'POST',
             headers: {
@@ -127,11 +128,24 @@ async function printInvoice(trxRaw: any) {
                 'Content-Type': 'application/json',
             },
         });
+
         if (!response.ok) {
-            alert('Gagal mengirim print job ke printer.');
+            alert('Gagal mengambil data invoice dari server.');
+            return;
         }
+
+        const payload = await response.json();
+
+        // Step 2: Kirim payload ke print server lokal (sama seperti di Kasir POS)
+        await fetch('http://localhost:5000/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        alert('Print berhasil dikirim ke printer.');
     } catch {
-        alert('Gagal terhubung ke printer server.');
+        alert('Gagal terhubung ke printer server. Pastikan print server aktif di localhost:5000.');
     } finally {
         printingId.value = null;
     }
