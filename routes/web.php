@@ -50,9 +50,6 @@ Route::middleware(['auth'])->group(function () {
             Route::resource('class-schedule', MasterClassScheduleController::class);
             Route::post('class-schedule/{classSchedule}/bookings', [MasterClassScheduleController::class, 'storeBooking'])->name('class-schedule.bookings.store');
             Route::delete('class-schedule/{classSchedule}/bookings/{booking}', [MasterClassScheduleController::class, 'destroyBooking'])->name('class-schedule.bookings.destroy');
-                Route::resource('product', MasterProductController::class);
-                Route::post('product/{product}/add-stock', [MasterProductController::class, 'addStock'])->name('product.add-stock');
-                Route::delete('product/stock-log/{stockLog}', [MasterProductController::class, 'deleteStockLog'])->name('product.stock-log.delete');
         });
     });
 
@@ -62,6 +59,9 @@ Route::middleware(['auth'])->group(function () {
             Route::resource('class-schedule', MasterClassScheduleController::class);
             Route::post('class-schedule/{classSchedule}/bookings', [MasterClassScheduleController::class, 'storeBooking'])->name('class-schedule.bookings.store');
             Route::delete('class-schedule/{classSchedule}/bookings/{booking}', [MasterClassScheduleController::class, 'destroyBooking'])->name('class-schedule.bookings.destroy');
+            Route::resource('product', MasterProductController::class);
+            Route::post('product/{product}/add-stock', [MasterProductController::class, 'addStock'])->name('product.add-stock');
+            Route::delete('product/stock-log/{stockLog}', [MasterProductController::class, 'deleteStockLog'])->name('product.stock-log.delete');
         });
 
         Route::prefix('management')->name('management.')->group(function () {
