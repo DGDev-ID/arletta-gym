@@ -66,17 +66,22 @@ class TransactionPosController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:master_products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'payment_method' => 'required|in:cash,debit',
+            'items'                => 'required|array|min:1',
+            'items.*.product_id'   => 'required|exists:master_products,id',
+            'items.*.quantity'     => 'required|integer|min:1',
+            'payment_method'       => 'required|in:cash,debit',
+            'cash_paid'            => 'required_if:payment_method,cash|nullable|numeric|min:0',
+            'created_by'           => 'nullable|string|max:100',
         ]);
 
         DB::transaction(function () use ($request, &$out) {
             $out = TransactionProductOut::create([
-                'total_price' => 0,
-                'status' => 'pending',
+                'total_price'    => 0,
+                'status'         => 'pending',
                 'payment_method' => $request->payment_method,
+                'cash_paid'      => null,
+                'cash_change'    => null,
+                'created_by'     => $request->created_by ?: null,
             ]);
 
             $totalSell = 0;
@@ -85,22 +90,33 @@ class TransactionPosController extends Controller
                 $product = MasterProduct::findOrFail($item['product_id']);
                 $qty = (int) $item['quantity'];
 
-                $buyPriceTotal = $product->buy_price * $qty;
+                $buyPriceTotal  = $product->buy_price * $qty;
                 $sellPriceTotal = $product->sell_price * $qty;
 
                 TransactionProduct::create([
-                    'product_id' => $product->id,
-                    'quantity' => $qty,
-                    'type' => 'out',
-                    'buy_price' => $buyPriceTotal,
-                    'sell_price' => $sellPriceTotal,
-                    'transaction_product_out_id' => $out->id,
+                    'product_id'                => $product->id,
+                    'quantity'                  => $qty,
+                    'type'                      => 'out',
+                    'buy_price'                 => $buyPriceTotal,
+                    'sell_price'                => $sellPriceTotal,
+                    'transaction_product_out_id'=> $out->id,
                 ]);
 
                 $totalSell += $sellPriceTotal;
             }
 
             $out->total_price = $totalSell;
+
+            if ($request->payment_method === 'cash') {
+                $cashPaid = (float) $request->cash_paid;
+                $out->cash_paid   = $cashPaid;
+                $out->cash_change = max(0, $cashPaid - $totalSell);
+            } else {
+                // Debit: tidak ada uang tunai, kembalian 0
+                $out->cash_paid   = 0;
+                $out->cash_change = 0;
+            }
+
             $out->save();
         });
 
@@ -219,6 +235,12 @@ class TransactionPosController extends Controller
         $totalPrice = (int) $transactionProductOut->total_price;
         $fee        = 0;
         $totalPay   = $totalPrice + $fee;
+        $cashPaid   = $transactionProductOut->payment_method === 'cash'
+                        ? (int) $transactionProductOut->cash_paid
+                        : null;
+        $cashChange = $transactionProductOut->payment_method === 'cash'
+                        ? (int) $transactionProductOut->cash_change
+                        : null;
 
         $pdf = pdf::loadView('pdf.pos-invoice', [
             'transaction' => $transactionProductOut,
@@ -227,6 +249,9 @@ class TransactionPosController extends Controller
             'totalPrice'  => $totalPrice,
             'fee'         => $fee,
             'totalPay'    => $totalPay,
+            'cashPaid'    => $cashPaid,
+            'cashChange'  => $cashChange,
+            'kasirName'   => $transactionProductOut->created_by ?? '-',
         ])->setPaper('a5', 'portrait');
 
         $filename = 'invoice-' . str_pad($transactionProductOut->id, 5, '0', STR_PAD_LEFT) . '.pdf';

@@ -35,9 +35,9 @@ const submit = () => {
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-2xl mx-auto px-6">
-                <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
+                <div class="rounded-7xl border bg-background shadow-sm p-8 space-y-8">
 
-                    <Heading variant="small" title="Tambah Product Baru" description="Tambahkan produk untuk mini POS." />
+                    <Heading variant="small" title="Tambah Product Baru" description="Tambahkan produk untuk Produk." />
 
                     <form @submit.prevent="submit" class="space-y-6">
 

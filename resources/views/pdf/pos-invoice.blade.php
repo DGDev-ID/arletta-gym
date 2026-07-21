@@ -194,6 +194,9 @@
 
             <div class="info-label">Alamat</div>
             <div class="info-value">{{ $gymAddress }}</div>
+
+            <div class="info-label">Kasir</div>
+            <div class="info-value">{{ $kasirName }}</div>
         </div>
         <div class="info-col" style="text-align: right;">
             <div class="info-label">Metode Pembayaran</div>
@@ -261,6 +264,17 @@
             <span class="totals-grand-label">Total Pembayaran</span>
             <span class="totals-grand-value">Rp {{ number_format($totalPay, 0, ',', '.') }}</span>
         </div>
+        @if($cashPaid !== null)
+        <hr class="totals-divider" />
+        <div class="totals-row">
+            <span class="totals-label">Uang Dibayar</span>
+            <span class="totals-value">Rp {{ number_format($cashPaid, 0, ',', '.') }}</span>
+        </div>
+        <div class="totals-row">
+            <span class="totals-label" style="color: #059669; font-weight: 600;">Kembalian</span>
+            <span class="totals-value" style="color: #059669;">Rp {{ number_format($cashChange, 0, ',', '.') }}</span>
+        </div>
+        @endif
     </div>
 
     <div class="footer">

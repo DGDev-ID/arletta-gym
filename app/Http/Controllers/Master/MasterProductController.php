@@ -124,6 +124,27 @@ class MasterProductController extends Controller
         return redirect()->back()->with('success', 'Stok berhasil ditambahkan.');
     }
 
+    public function reduceStock(Request $request, MasterProduct $product)
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        DB::transaction(function () use ($product, $validated) {
+            $newStock = max(0, $product->stock - $validated['quantity']);
+            $product->update(['stock' => $newStock]);
+        });
+
+        return redirect()->back()->with('success', 'Stok berhasil dikurangi.');
+    }
+
+    public function resetStock(MasterProduct $product)
+    {
+        $product->update(['stock' => 0]);
+
+        return redirect()->back()->with('success', 'Stok berhasil direset ke 0.');
+    }
+
     public function deleteStockLog(TransactionProduct $stockLog)
     {
         if ($stockLog->type !== 'in') {

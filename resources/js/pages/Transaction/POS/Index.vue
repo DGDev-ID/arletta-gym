@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Notyf } from 'notyf';
 import 'notyf/notyf.min.css';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -25,7 +25,23 @@ const selectedGym = ref(props.selectedGymId ?? (props.gyms && props.gyms[0] ? pr
 
 const cart = ref<Record<number, number>>({});
 
-const form = useForm({ items: [], payment_method: '' });
+const form = useForm({ items: [], payment_method: '', cash_paid: null as number | null, created_by: '' as string });
+
+// Nama kasir — persisted di localStorage
+const kasirName = ref('');
+onMounted(() => {
+    kasirName.value = localStorage.getItem('pos_kasir_name') ?? '';
+});
+const saveKasirName = () => {
+    localStorage.setItem('pos_kasir_name', kasirName.value);
+};
+
+const cashInput = ref<number | null>(null);
+
+const cashChange = computed(() => {
+    if (cashInput.value === null || cashInput.value < cartTotal.value) return null;
+    return cashInput.value - cartTotal.value;
+});
 
 const notyf = new Notyf({
     duration: 3000,
@@ -51,7 +67,12 @@ const changeGym = () => {
 };
 
 const inc = (product: any) => {
-    cart.value[product.id] = (cart.value[product.id] || 0) + 1;
+    const currentQty = cart.value[product.id] || 0;
+    if (currentQty >= product.stock) {
+        notyf.error(`Stok ${product.name} hanya tersedia ${product.stock} unit.`);
+        return;
+    }
+    cart.value[product.id] = currentQty + 1;
 };
 
 const dec = (product: any) => {
@@ -63,9 +84,38 @@ const dec = (product: any) => {
 const openCheckout = ref(false);
 
 const generatePayment = (method: string) => {
+    // Validasi stok sebelum checkout
+    const outOfStock = cartItems.value.filter(i => i.quantity > (i.product.stock ?? 0));
+    if (outOfStock.length > 0) {
+        outOfStock.forEach(i => {
+            notyf.error(`Stok ${i.product.name} tidak mencukupi! Tersedia: ${i.product.stock ?? 0}, diminta: ${i.quantity}.`);
+        });
+        return;
+    }
+
+    if (method === 'cash') {
+        if (cashInput.value === null || cashInput.value === 0) {
+            notyf.error('Masukkan nominal uang yang dibayarkan terlebih dahulu.');
+            return;
+        }
+        if (cashInput.value < cartTotal.value) {
+            notyf.error(`Uang yang dibayar (${formatRupiah(cashInput.value)}) kurang dari total (${formatRupiah(cartTotal.value)}).`);
+            return;
+        }
+        form.cash_paid = cashInput.value;
+    } else {
+        form.cash_paid = null; // debit tidak perlu cash_paid
+    }
+
     form.payment_method = method;
     form.items = cartItems.value.map(i => ({ product_id: i.product.id, quantity: i.quantity }));
-    form.post('/transaction/pos');
+    form.created_by = kasirName.value || '';
+    form.post('/transaction/pos', {
+        onSuccess: () => {
+            cashInput.value = null;
+            openCheckout.value = false;
+        },
+    });
 };
 
 const makeSuccess = (id: number) => {
@@ -78,12 +128,14 @@ const makeFailed = (id: number) => {
     router.post(`/transaction/pos/${id}/make-failed`);
 };
 
-const successList = computed(() => props.successTransactions.map((t: any, idx: number) => (
-    {
+const successList = computed(() => props.successTransactions.map((t: any, idx: number) => ({
     no: idx + 1,
     id: t.id,
     items: t.products?.map((p: any) => `${p.product?.name ?? '-'} x${p.quantity}`).join(', ') || '-',
     totalPrice: t.total_price || 0,
+    cashPaid: t.cash_paid,
+    cashChange: t.cash_change,
+    kasirName: t.created_by || '-',
     date: t.created_at,
     paymentMethod: t.payment_method || '-',
     rawProducts: t.products ?? [],
@@ -145,12 +197,26 @@ const downloadInvoice = (id: number) => {
                 <div class="grid md:grid-cols-3 gap-6">
 
                     <div class="md:col-span-2 space-y-4">
-                        <div class="flex items-center gap-4">
-                            <label class="text-sm font-medium">Pilih Gym</label>
-                            <select v-model="selectedGym" @change="changeGym"
-                                class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                <option v-for="g in props.gyms" :key="g.id" :value="g.id">{{ g.name }}</option>
-                            </select>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm font-medium whitespace-nowrap">Pilih Gym</label>
+                                <select v-model="selectedGym" @change="changeGym"
+                                    class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <option v-for="g in props.gyms" :key="g.id" :value="g.id">{{ g.name }}</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm font-medium whitespace-nowrap">Nama Kasir</label>
+                                <input
+                                    v-model="kasirName"
+                                    @blur="saveKasirName"
+                                    @keyup.enter="saveKasirName"
+                                    type="text"
+                                    placeholder="Masukkan nama kasir..."
+                                    class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                />
+                                <span v-if="kasirName" class="text-xs text-emerald-600 font-medium">✓ Tersimpan</span>
+                            </div>
                         </div>
 
                         <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
@@ -182,8 +248,14 @@ const downloadInvoice = (id: number) => {
                                                 <div class="w-8 text-center font-medium">{{ cart[prod.id] || 0 }}</div>
 
                                                 <button @click="inc(prod)" type="button"
-                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-100 text-green-700 hover:bg-green-700 hover:text-white transition"
-                                                    title="Tambah">
+                                                    :disabled="(cart[prod.id] || 0) >= prod.stock"
+                                                    :class="[
+                                                        'inline-flex items-center justify-center w-8 h-8 rounded-md transition',
+                                                        (cart[prod.id] || 0) >= prod.stock
+                                                            ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                                                            : 'bg-green-100 text-green-700 hover:bg-green-700 hover:text-white'
+                                                    ]"
+                                                    :title="(cart[prod.id] || 0) >= prod.stock ? 'Stok habis' : 'Tambah'">
                                                     +
                                                 </button>
                                             </div>
@@ -244,13 +316,17 @@ const downloadInvoice = (id: number) => {
                                     Export CSV
                                 </button>
                             </div>
+                            <div class="overflow-x-auto w-full">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-muted/50">
                                     <tr class="text-muted-foreground">
                                         <th class="px-6 py-3 text-left">No</th>
                                         <th class="px-6 py-3 text-left">Items</th>
                                         <th class="px-6 py-3 text-left">Total Harga</th>
-                                        <th class="px-6 py-3 text-left">Metode Pembayaran</th>
+                                        <th class="px-6 py-3 text-left">Metode</th>
+                                        <th class="px-6 py-3 text-right">Dibayar</th>
+                                        <th class="px-6 py-3 text-right">Kembalian</th>
+                                        <th class="px-6 py-3 text-left">Kasir</th>
                                         <th class="px-6 py-3 text-left">Tanggal</th>
                                         <th class="px-6 py-3 text-center">Aksi</th>
                                     </tr>
@@ -266,9 +342,25 @@ const downloadInvoice = (id: number) => {
                                                 class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
                                             >{{ trx.paymentMethod }}</span>
                                         </td>
+                                        <td class="px-6 py-3 text-right">
+                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashPaid !== null" class="font-medium">
+                                                {{ formatRupiah(trx.cashPaid) }}
+                                            </span>
+                                            <span v-else class="text-muted-foreground text-xs">-</span>
+                                        </td>
+                                        <td class="px-6 py-3 text-right">
+                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashChange !== null"
+                                                :class="Number(trx.cashChange) > 0 ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'">
+                                                {{ formatRupiah(trx.cashChange) }}
+                                            </span>
+                                            <span v-else class="text-muted-foreground text-xs">-</span>
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            <span class="text-sm font-medium">{{ trx.kasirName }}</span>
+                                        </td>                                        
                                         <td class="px-6 py-3">
                                             {{ new Date(trx.date).toLocaleString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
-                                        </td>                                        
+                                        </td>
                                         <td class="px-6 py-3">
                                             <div class="flex items-center gap-2">
                                                 <button
@@ -296,10 +388,11 @@ const downloadInvoice = (id: number) => {
                                         </td>
                                     </tr>
                                     <tr v-if="successList.length === 0">
-                                        <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
+                                        <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
                                     </tr>
                                 </tbody>
                             </table>
+                            </div>
                         </div>
 
                     </div>
@@ -337,19 +430,45 @@ const downloadInvoice = (id: number) => {
                                 <hr />
                                 <div class="flex justify-between font-semibold">Total <div>{{ formatRupiah(cartTotal) }}</div></div>
 
-                                <div class="mt-4">
-                                    <p class="text-sm font-medium text-muted-foreground mb-2">Pilih Metode Pembayaran</p>
-                                    <div class="flex gap-2">
+                                <div class="mt-4 space-y-4">
+                                    <p class="text-sm font-medium text-muted-foreground">Pilih Metode Pembayaran</p>
+
+                                    <!-- Input Cash -->
+                                    <div class="rounded-xl border bg-emerald-50/50 p-3 space-y-3">
+                                        <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Pembayaran Cash</p>
+                                        <div class="space-y-1">
+                                            <label class="text-xs text-muted-foreground">Nominal Uang Dibayarkan</label>
+                                            <Input
+                                                v-model.number="cashInput"
+                                                type="number"
+                                                min="0"
+                                                placeholder="Masukkan nominal..."
+                                                class="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <!-- Kembalian preview -->
+                                        <div v-if="cashInput !== null && cashInput > 0" class="flex justify-between items-center rounded-lg bg-white border px-3 py-2">
+                                            <span class="text-xs text-muted-foreground">Kembalian</span>
+                                            <span
+                                                :class="cashChange !== null && cashChange >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'"
+                                                class="text-sm"
+                                            >
+                                                {{ cashChange !== null ? formatRupiah(cashChange) : 'Uang kurang!' }}
+                                            </span>
+                                        </div>
                                         <button @click="generatePayment('cash')" :disabled="form.processing"
-                                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition">
-                                            Cash
-                                        </button>
-                                        <button @click="generatePayment('debit')" :disabled="form.processing"
-                                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition">
-                                            Debit
+                                            class="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition">
+                                            Bayar Cash
                                         </button>
                                     </div>
-                                    <button @click="openCheckout = false" class="mt-2 w-full inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm">Tutup</button>
+
+                                    <!-- Debit -->
+                                    <button @click="generatePayment('debit')" :disabled="form.processing"
+                                        class="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition">
+                                        Bayar Debit
+                                    </button>
+
+                                    <button @click="openCheckout = false" class="w-full inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm">Tutup</button>
                                 </div>
                             </div>
                         </div>

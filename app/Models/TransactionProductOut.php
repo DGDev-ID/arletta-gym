@@ -10,10 +10,15 @@ class TransactionProductOut extends Model
         'total_price',
         'status',
         'payment_method',
+        'cash_paid',
+        'cash_change',
+        'created_by',
     ];
 
     protected $casts = [
-        'total_price' => 'decimal:2',
+        'total_price'  => 'decimal:2',
+        'cash_paid'    => 'decimal:2',
+        'cash_change'  => 'decimal:2',
     ];
 
     // Relations
