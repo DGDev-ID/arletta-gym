@@ -98,7 +98,7 @@ class ScanQRCodeController extends Controller
 
         // 7. Reminder H-7
         $reminder = $userGym->membership_end_at <= now()->addDays(7);
-        $reminderDay = $reminder ? (int) now()->diffInDays($userGym->membership_end_at, false) : null;
+        $reminderDay = $reminder ? (int) now()->startOfDay()->diffInDays(Carbon::parse($userGym->membership_end_at)->startOfDay(), false) : null;
 
         // 8. Get scan history (activity logs)
         $activityLogs = ActivityLog::where('user_id', $user->id)
@@ -189,7 +189,7 @@ class ScanQRCodeController extends Controller
             $membershipEndAt = null;
             if ($userGym && $userGym->membership_end_at) {
                 $membershipEndAt = Carbon::parse($userGym->membership_end_at)->format('d M Y');
-                $daysRemaining = (int) Carbon::now()->diffInDays(Carbon::parse($userGym->membership_end_at), false);
+                $daysRemaining = (int) Carbon::now()->startOfDay()->diffInDays(Carbon::parse($userGym->membership_end_at)->startOfDay(), false);
             }
 
             return [
