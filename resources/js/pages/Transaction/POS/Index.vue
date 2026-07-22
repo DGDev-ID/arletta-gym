@@ -155,6 +155,7 @@ const printInvoice = async (trx: any) => {
             name: trx.gymName,
             address: trx.gymAddress,
         },
+        created_by: trx.kasirName ?? '-',
         payment_method: trx.paymentMethod.charAt(0).toUpperCase() + trx.paymentMethod.slice(1).toLowerCase(),
         total_price: totalPrice,
         fee,
