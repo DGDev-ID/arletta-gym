@@ -159,6 +159,8 @@ const printInvoice = async (trx: any) => {
         payment_method: trx.paymentMethod.charAt(0).toUpperCase() + trx.paymentMethod.slice(1).toLowerCase(),
         total_price: totalPrice,
         fee,
+        cash_paid: trx.cashPaid ?? 0,
+        cash_change: trx.cashChange ?? 0,
         total_pay: totalPrice + fee,
         item_details: trx.rawProducts.map((p: any) => ({
             item_name: p.product?.name ?? '-',
