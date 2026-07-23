@@ -6,6 +6,8 @@ import 'notyf/notyf.min.css';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
+import Pagination from '@/components/Pagination.vue';
+import { Trash2 } from 'lucide-vue-next';
 import { type BreadcrumbItem } from '@/types';
 import { formatRupiah } from '@/helpers/formatRupiah';
 
@@ -13,8 +15,9 @@ const props = defineProps<{
     gyms: { id: number; name: string }[];
     products: any[];
     pendingTransactions: any[];
-    successTransactions: any[];
+    successTransactions: any; // paginated object dari Laravel
     selectedGymId: number | null;
+    isSuperAdmin: boolean;
 }>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -128,8 +131,8 @@ const makeFailed = (id: number) => {
     router.post(`/transaction/pos/${id}/make-failed`);
 };
 
-const successList = computed(() => props.successTransactions.map((t: any, idx: number) => ({
-    no: idx + 1,
+const successList = computed(() => (props.successTransactions?.data ?? []).map((t: any, idx: number) => ({
+    no: (props.successTransactions.current_page - 1) * props.successTransactions.per_page + idx + 1,
     id: t.id,
     items: t.products?.map((p: any) => `${p.product?.name ?? '-'} x${p.quantity}`).join(', ') || '-',
     totalPrice: t.total_price || 0,
@@ -184,6 +187,18 @@ const printInvoice = async (trx: any) => {
 const downloadInvoice = (id: number) => {
     window.open(`/transaction/pos/${id}/invoice-pdf`, '_blank');
 };
+
+const deletingPosId = ref<number | null>(null);
+function deleteSuccessTransaction(id: number) {
+    if (!confirm('Yakin ingin menghapus transaksi ini? Data tidak bisa dikembalikan.')) return;
+    deletingPosId.value = id;
+    router.delete(`/transaction/pos/${id}`, {
+        preserveScroll: true,
+        onSuccess: () => notyf.success('Transaksi berhasil dihapus.'),
+        onError: () => notyf.error('Gagal menghapus transaksi.'),
+        onFinish: () => { deletingPosId.value = null; },
+    });
+}
 </script>
 
 <template>
@@ -280,7 +295,7 @@ const downloadInvoice = (id: number) => {
                             <table class="min-w-full text-sm">
                                 <thead class="bg-muted/50">
                                     <tr class="text-muted-foreground">
-                                        <th class="px-6 py-4 text-left font-medium">Waktu</th>
+                                        <th class="px-6 py-4 text-left font-medium">Tanggal</th>
                                         <th class="px-6 py-4 text-left font-medium">Items</th>
                                         <th class="px-6 py-4 text-right font-medium">Total</th>
                                         <th class="px-6 py-4 text-right font-medium">Aksi</th>
@@ -289,7 +304,7 @@ const downloadInvoice = (id: number) => {
 
                                 <tbody>
                                     <tr v-for="trx in props.pendingTransactions" :key="trx.id" class="border-t hover:bg-muted/40 transition">
-                                        <td class="px-6 py-4">{{ trx.created_at }}</td>
+                                        <td class="px-6 py-4">{{ new Date(trx.created_at).toLocaleString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</td>
                                         <td class="px-6 py-4">
                                             <ul class="text-sm">
                                                 <li v-for="p in trx.products" :key="p.id">{{ p.product?.name }} x {{ p.quantity }}</li>
@@ -311,95 +326,9 @@ const downloadInvoice = (id: number) => {
                             </table>
                         </div>
 
-                        <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
-                            <div class="p-4 flex justify-between items-center">
-                                <h3 class="font-medium mb-2">Success Transactions</h3>
-                                <button @click="exportCsv"
-                                    class="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">
-                                    Export CSV
-                                </button>
-                            </div>
-                            <div class="overflow-x-auto w-full">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-muted/50">
-                                    <tr class="text-muted-foreground">
-                                        <th class="px-6 py-3 text-left">No</th>
-                                        <th class="px-6 py-3 text-left">Items</th>
-                                        <th class="px-6 py-3 text-left">Total Harga</th>
-                                        <th class="px-6 py-3 text-left">Metode</th>
-                                        <th class="px-6 py-3 text-right">Dibayar</th>
-                                        <th class="px-6 py-3 text-right">Kembalian</th>
-                                        <th class="px-6 py-3 text-left">Kasir</th>
-                                        <th class="px-6 py-3 text-left">Tanggal</th>
-                                        <th class="px-6 py-3 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="trx in successList" :key="trx.id" class="border-t hover:bg-muted/40 transition">
-                                        <td class="px-6 py-3">{{ trx.no }}</td>
-                                        <td class="px-6 py-3 font-medium">{{ trx.items }}</td>
-                                        <td class="px-6 py-3 font-semibold">{{ formatRupiah(trx.totalPrice) }}</td>
-                                        <td class="px-6 py-3 text-center">
-                                            <span
-                                                :class="trx.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' : trx.paymentMethod === 'debit' ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'"
-                                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
-                                            >{{ trx.paymentMethod }}</span>
-                                        </td>
-                                        <td class="px-6 py-3 text-right">
-                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashPaid !== null" class="font-medium">
-                                                {{ formatRupiah(trx.cashPaid) }}
-                                            </span>
-                                            <span v-else class="text-muted-foreground text-xs">-</span>
-                                        </td>
-                                        <td class="px-6 py-3 text-right">
-                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashChange !== null"
-                                                :class="Number(trx.cashChange) > 0 ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'">
-                                                {{ formatRupiah(trx.cashChange) }}
-                                            </span>
-                                            <span v-else class="text-muted-foreground text-xs">-</span>
-                                        </td>
-                                        <td class="px-6 py-3">
-                                            <span class="text-sm font-medium">{{ trx.kasirName }}</span>
-                                        </td>                                        
-                                        <td class="px-6 py-3">
-                                            {{ new Date(trx.date).toLocaleString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
-                                        </td>
-                                        <td class="px-6 py-3">
-                                            <div class="flex items-center gap-2">
-                                                <button
-                                                    @click="printInvoice(trx)"
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-500 hover:text-white transition"
-                                                    title="Kirim ke printer"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                                                    </svg>
-                                                </button>
-
-                                                <button
-                                                    @click="downloadInvoice(trx.id)"
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white transition"
-                                                    title="Download Invoice PDF"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="successList.length === 0">
-                                        <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-
                     </div>
 
+                    
                     <div class="space-y-4">
                         <div class="rounded-2xl border bg-background shadow-sm p-4 w-80">
                             <h3 class="font-semibold">Keranjang</h3>
@@ -476,7 +405,107 @@ const downloadInvoice = (id: number) => {
                             </div>
                         </div>
                     </div>
+                    <div class="md:col-span-3 rounded-4xl border bg-background shadow-sm overflow-hidden">
+                            <div class="p-4 flex justify-between items-center">
+                                <h3 class="font-medium mb-2">Success Transactions</h3>
+                                <button @click="exportCsv"
+                                    class="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">
+                                    Export CSV
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto w-full">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-muted/50">
+                                    <tr class="text-muted-foreground">
+                                        <th class="px-6 py-3 text-left">No</th>
+                                        <th class="px-6 py-3 text-left">Items</th>
+                                        <th class="px-6 py-3 text-left">Total Harga</th>
+                                        <th class="px-6 py-3 text-left">Metode</th>
+                                        <th class="px-6 py-3 text-right">Dibayar</th>
+                                        <th class="px-6 py-3 text-right">Kembalian</th>
+                                        <th class="px-6 py-3 text-left">Kasir</th>
+                                        <th class="px-6 py-3 text-left">Tanggal</th>
+                                        <th class="px-6 py-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="trx in successList" :key="trx.id" class="border-t hover:bg-muted/40 transition">
+                                        <td class="px-6 py-3">{{ trx.no }}</td>
+                                        <td class="px-6 py-3 font-medium">{{ trx.items }}</td>
+                                        <td class="px-6 py-3 font-semibold">{{ formatRupiah(trx.totalPrice) }}</td>
+                                        <td class="px-6 py-3 text-center">
+                                            <span
+                                                :class="trx.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' : trx.paymentMethod === 'debit' ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'"
+                                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
+                                            >{{ trx.paymentMethod }}</span>
+                                        </td>
+                                        <td class="px-6 py-3 text-right">
+                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashPaid !== null" class="font-medium">
+                                                {{ formatRupiah(trx.cashPaid) }}
+                                            </span>
+                                            <span v-else class="text-muted-foreground text-xs">-</span>
+                                        </td>
+                                        <td class="px-6 py-3 text-right">
+                                            <span v-if="trx.paymentMethod === 'cash' && trx.cashChange !== null"
+                                                :class="Number(trx.cashChange) > 0 ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'">
+                                                {{ formatRupiah(trx.cashChange) }}
+                                            </span>
+                                            <span v-else class="text-muted-foreground text-xs">-</span>
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            <span class="text-sm font-medium">{{ trx.kasirName }}</span>
+                                        </td>                                        
+                                        <td class="px-6 py-3">
+                                            {{ new Date(trx.date).toLocaleString('id-ID', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            <div class="flex items-center gap-2">
+                                                <button
+                                                    @click="printInvoice(trx)"
+                                                    type="button"
+                                                    class="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-500 hover:text-white transition"
+                                                    title="Kirim ke printer"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                                                    </svg>
+                                                </button>
 
+                                                <button
+                                                    @click="downloadInvoice(trx.id)"
+                                                    type="button"
+                                                    class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white transition"
+                                                    title="Download Invoice PDF"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                    </svg>
+                                                </button>
+
+                                                <!-- Tombol hapus hanya untuk Super Admin -->
+                                                <button
+                                                    v-if="props.isSuperAdmin"
+                                                    @click="deleteSuccessTransaction(trx.id)"
+                                                    :disabled="deletingPosId === trx.id"
+                                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white transition disabled:opacity-50"
+                                                    title="Hapus Transaksi"
+                                                >
+                                                    <Trash2 :size="13" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="successList.length === 0">
+                                        <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi sukses.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            </div>
+                            <!-- Pagination -->
+                            <div class="mt-4 mb-6 px-4">
+                                <Pagination :links="props.successTransactions.links" />
+                            </div>
+                        </div>
                 </div>
             </div>
         </div>

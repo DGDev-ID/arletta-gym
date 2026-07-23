@@ -23,12 +23,8 @@ class TransactionPosController extends Controller
         $user = $request->user();
         $allowedGymIds = null;
 
-        if ($user->hasRole('Super Admin')) {
-            $gyms = MasterGym::select('id', 'name')->orderBy('name')->get();
-        } else {
-            $allowedGymIds = GymAdmin::where('admin_id', $user->id)->pluck('gym_id');
-            $gyms = MasterGym::whereIn('id', $allowedGymIds)->select('id', 'name')->orderBy('name')->get();
-        }
+        // Semua user melihat semua gym di dropdown Pilih Gym
+        $gyms = MasterGym::select('id', 'name')->orderBy('name')->get();
 
         $selectedGymId = $request->get('gym_id') ?? ($gyms->first()->id ?? null);
 
@@ -38,28 +34,20 @@ class TransactionPosController extends Controller
         }
 
         $pendingQuery = TransactionProductOut::where('status', 'pending')->with(['products.product.category']);
-        if ($allowedGymIds) {
-            $pendingQuery->whereHas('products.product', function ($q) use ($allowedGymIds) {
-                $q->whereIn('gym_id', $allowedGymIds);
-            });
-        }
-
+        // Semua user melihat semua transaksi pending
         $pendingTransactions = $pendingQuery->latest()->get();
 
         $successQuery = TransactionProductOut::where('status', 'success')->with(['products.product.category', 'products.product.gym']);
-        if ($allowedGymIds) {
-            $successQuery->whereHas('products.product', function ($q) use ($allowedGymIds) {
-                $q->whereIn('gym_id', $allowedGymIds);
-            });
-        }
-        $successTransactions = $successQuery->latest()->get();
+        // Semua user melihat semua transaksi success
+        $successTransactions = $successQuery->latest()->paginate(10)->withQueryString();
 
         return Inertia::render('Transaction/POS/Index', [
-            'gyms' => $gyms,
-            'products' => $products,
+            'gyms'                => $gyms,
+            'products'            => $products,
             'pendingTransactions' => $pendingTransactions,
             'successTransactions' => $successTransactions,
-            'selectedGymId' => $selectedGymId,
+            'selectedGymId'       => $selectedGymId,
+            'isSuperAdmin'        => $user->hasRole('Super Admin'),
         ]);
     }
 
@@ -132,6 +120,23 @@ class TransactionPosController extends Controller
         });
 
         return redirect()->back()->with('success', 'Transaksi ditandai gagal dan log produk dihapus.');
+    }
+
+    /**
+     * Hapus transaksi POS — hanya Super Admin.
+     */
+    public function destroy(Request $request, TransactionProductOut $transactionProductOut)
+    {
+        if (!$request->user()->hasRole('Super Admin')) {
+            abort(403, 'Hanya Super Admin yang dapat menghapus transaksi ini.');
+        }
+
+        DB::transaction(function () use ($transactionProductOut) {
+            $transactionProductOut->products()->delete();
+            $transactionProductOut->delete();
+        });
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dihapus.');
     }
 
     public function makeSuccess(Request $request, TransactionProductOut $transactionProductOut)
