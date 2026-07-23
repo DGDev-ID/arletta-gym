@@ -71,7 +71,7 @@ class ManageCheckInController extends Controller
             }
             $log->membership_status = $status;
             $log->days_remaining = $ug && $ug->membership_end_at
-                ? (int) Carbon::now()->diffInDays(Carbon::parse($ug->membership_end_at), false)
+                ? (int) Carbon::now()->startOfDay()->diffInDays(Carbon::parse($ug->membership_end_at)->startOfDay(), false)
                 : null;
             return $log;
         });

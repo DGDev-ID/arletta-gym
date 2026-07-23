@@ -471,7 +471,7 @@ class ManageUserController extends Controller
             return response()->json(['message' => 'User di gym ini belum di freeze.'], 422);
         }
 
-        $selisihHari = now()->diffInDays($userGym->freezed_at);
+        $selisihHari = now()->startOfDay()->diffInDays(Carbon::parse($userGym->freezed_at)->startOfDay());
         $userGym->membership_end_at = $userGym->membership_end_at->addDays($selisihHari);
         $userGym->freezed_at = null;
         $userGym->freezed_end_at = null;
