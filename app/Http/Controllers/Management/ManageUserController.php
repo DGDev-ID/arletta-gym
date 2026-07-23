@@ -170,7 +170,7 @@ class ManageUserController extends Controller
 
         $pendingTransactions = Transaction::where('user_id', $user->id)
             ->where('status', 'pending')
-            ->where('method', 'manual')
+            ->whereIn('method', ['manual', 'debit']) // Termasuk VA/QRIS yang diproses tanpa gateway
             ->with(['membership', 'fullPt', 'installmentPt']) // Eager load relasi paketnya
             ->latest()
             ->get();
@@ -324,7 +324,7 @@ class ManageUserController extends Controller
         return redirect()->route('management.user.index')->with('success', 'User updated successfully.');
     }
 
-    public function generateInstallment(Request $request)
+    public function generateInstallment(Request $request, WhatsappBlastService $whatsappBlastService)
     {
         $validator = Validator::make($request->all(), [
             'user_id' => ['required', 'exists:users,id', function ($attribute, $value, $fail) {
@@ -346,23 +346,14 @@ class ManageUserController extends Controller
 
         $res = PaymentService::processInstallment($userPtPackageInstallment, $validated['payment_method'], $validated['user_id']);
 
-        if (in_array($validated['payment_method'], ['va', 'qris'])) {
-            $user = User::find($validated['user_id']);
-
-            $transaction = \App\Models\Transaction::find($res['transaction_id']);
-
-            $midtransService = new \App\Http\Services\MidtransService();
-            $snapToken = $midtransService->getSnapToken($transaction, $user);
-            $transaction->snap_token = $snapToken;
-            $transaction->save();
-
-            $res['snap_token'] = $snapToken;
-        }
+        // VA dan QRIS tidak lagi menggunakan Midtrans payment gateway.
+        // Alur sama seperti manual: transaksi pending dan perlu validasi admin.
+        // Tidak ada snap_token yang dikembalikan.
 
         return response()->json($res);
     }
 
-    public function generatePayment(Request $request)
+    public function generatePayment(Request $request, WhatsappBlastService $whatsappBlastService)
     {
         $validator = Validator::make($request->all(), [
             'user_id' => ['required', 'exists:users,id', function ($attribute, $value, $fail) {
@@ -399,18 +390,9 @@ class ManageUserController extends Controller
         $validated = $validator->validated();
         $res = PaymentService::processPayment($validated);
 
-        if (in_array($validated['payment_method'], ['va', 'qris'])) {
-            $user = User::find($validated['user_id']);
-
-            $transaction = \App\Models\Transaction::find($res['transaction_id']);
-
-            $midtransService = new \App\Http\Services\MidtransService();
-            $snapToken = $midtransService->getSnapToken($transaction, $user);
-            $transaction->snap_token = $snapToken;
-            $transaction->save();
-
-            $res['snap_token'] = $snapToken;
-        }
+        // VA dan QRIS tidak lagi menggunakan Midtrans payment gateway.
+        // Alur sama seperti manual: transaksi pending dan perlu validasi admin.
+        // Tidak ada snap_token yang dikembalikan.
 
         return response()->json($res);
     }

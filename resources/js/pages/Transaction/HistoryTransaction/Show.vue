@@ -40,7 +40,7 @@ const trx = computed(() => props.transaction);
                         <div class="space-y-3">
                             <div><span class="text-muted-foreground text-xs">Member</span><div class="font-medium">{{ trx.user?.name || '-' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Paket</span><div class="font-medium">{{ trx.membership?.name || trx.fullPt?.name || trx.installmentPt?.name || '-' }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Metode</span><div class="font-medium">{{ trx.method_midtrans_detail || 'manual' }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Metode Pembayaran</span><div class="font-medium">{{ trx.method_midtrans_detail || 'manual' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Tipe Transaksi</span><div class="font-medium">{{ trx.transaction_type || '-' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Tanggal</span><div class="font-medium">{{ trx.created_at ? new Date(trx.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Deskripsi</span><div class="font-medium">{{ trx.description || '-' }}</div></div>
@@ -48,7 +48,7 @@ const trx = computed(() => props.transaction);
                         <div class="space-y-3">
                             <div><span class="text-muted-foreground text-xs">Metode</span><div class="font-medium">{{ trx.method || 'manual' }}</div></div>
                             <div><span class="text-muted-foreground text-xs">Harga</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.price) || 0) }}</div></div>
-                            <div><span class="text-muted-foreground text-xs">Biaya Midtrans</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.midtrans_fee) || 0) }}</div></div>
+                            <div><span class="text-muted-foreground text-xs">Biaya Layanan</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.midtrans_fee) || 0) }}</div></div>
                             <!-- PPN disabled - harga sudah termasuk PPN -->
                             <!-- <div><span class="text-muted-foreground text-xs">Biaya PPN</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.ppn_fee) || 0) }}</div></div> -->
                             <div><span class="text-muted-foreground text-xs">Total Biaya</span><div class="font-semibold text-lg">{{ (formatRupiah(trx.total_price) || 0) }}</div></div>

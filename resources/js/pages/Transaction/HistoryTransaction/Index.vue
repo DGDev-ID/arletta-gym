@@ -28,6 +28,7 @@ const props = defineProps<{
 const methodOptions = [
     { value: 'manual', label: 'Manual' },
     { value: 'midtrans', label: 'Midtrans' },
+    { value: 'debit', label: 'Debit (VA/QRIS)' },
 ];
 
 const transactionTypeOptions = [
@@ -162,16 +163,30 @@ function downloadInvoice(trxRaw: any) {
 const formattedTransactions = computed(() => {
     return props.transactions.data
         .filter((trx: any) => trx.status === 'success')
-        .map((trx: any, idx: number) => ({
-            no: (props.transactions.current_page - 1) * props.transactions.per_page + idx + 1,
-            id: trx.unique_id || trx.id,
-            member: trx.user?.name || '-',
-            amount: trx.total_price || trx.price || 0,
-            date: trx.created_at ? new Date(trx.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-            status: trx.status,
-            method: trx.method_midtrans_detail || 'manual',
-            raw: trx,
-        }));
+        .map((trx: any, idx: number) => {
+            // Tentukan label metode pembayaran
+            let methodLabel = 'manual';
+            if (trx.method === 'debit') {
+                // VA/QRIS tanpa payment gateway — tampilkan 'Debit' + detail
+                const detail = trx.method_midtrans_detail;
+                methodLabel = detail ? `Debit - ${detail.toUpperCase()}` : 'Debit';
+            } else if (trx.method === 'midtrans') {
+                methodLabel = trx.method_midtrans_detail || 'midtrans';
+            } else {
+                methodLabel = 'manual';
+            }
+
+            return {
+                no: (props.transactions.current_page - 1) * props.transactions.per_page + idx + 1,
+                id: trx.unique_id || trx.id,
+                member: trx.user?.name || '-',
+                amount: trx.total_price || trx.price || 0,
+                date: trx.created_at ? new Date(trx.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+                status: trx.status,
+                method: methodLabel,
+                raw: trx,
+            };
+        });
 });
 
 const showFilter = ref(false);

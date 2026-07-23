@@ -22,11 +22,6 @@ const notyf = new Notyf({
     position: { x: 'right', y: 'bottom' },
 });
 
-declare global {
-    interface Window {
-        snap: any;
-    }
-}
 
 interface Gym {
     id: string | number;
@@ -46,12 +41,10 @@ const props = defineProps<{
 const installmentPaymentMethods = ref<Record<number, 'manual' | 'va' | 'qris'>>({});
 const availableMethods = ['manual', 'va', 'qris'] as const;
 const calculateInstallmentTotal = (installment: any) => {
-    const method = installmentPaymentMethods.value[installment.id] || 'manual';
     const base = parseFloat(installment.price);
 
-    let fee = 0;
-    if (method === 'va') fee = 4000;
-    else if (method === 'qris') fee = base * 0.007;
+    // Fee dihapus: VA dan QRIS tidak lagi dikenakan biaya layanan payment gateway
+    const fee = 0;
 
     return {
         base: base,
@@ -75,18 +68,13 @@ const handlePayInstallment = async (installment: any) => {
             user_pt_package_installment_id: installment.id,
         };
 
-        const response = await axios.post('/management/user/generate-installment', payload);
-        const data = response.data;
+        await axios.post('/management/user/generate-installment', payload);
 
-        if (data.snap_token) {
-            window.snap.pay(data.snap_token, {
-                onSuccess: () => { alert("Pembayaran Berhasil!"); router.reload(); },
-                onPending: () => { alert("Menunggu Pembayaran."); router.reload(); },
-            });
-        } else {
-            notyf.success("Invoice manual berhasil dibuat!");
-            router.reload({ only: ['pendingTransactions', 'pendingInstallments'] });
-        }
+        // Semua metode (manual, VA, QRIS) kini menggunakan alur yang sama:
+        // transaksi dibuat dengan status pending dan perlu validasi admin.
+        const methodLabel = method === 'va' ? 'Virtual Account' : method === 'qris' ? 'QRIS' : 'Manual';
+        notyf.success(`Invoice ${methodLabel} berhasil dibuat! Menunggu validasi admin.`);
+        router.reload({ only: ['pendingTransactions', 'pendingInstallments'] });
     } catch (error: any) {
         console.log(error);
         alert("Gagal memproses cicilan: " + (error.response?.data?.message || 'Error'));
@@ -273,36 +261,19 @@ const handleGeneratePayment = async () => {
         }
 
         const response = await axios.post('/management/user/generate-payment', payload);
-        const data = response.data;
 
-        if (data.snap_token) {
-            window.snap.pay(data.snap_token, {
-                onSuccess: function (result: any) {
-                    console.log('success', result);
-                    alert("Pembayaran Berhasil!");
-                },
-                onPending: function (result: any) {
-                    console.log('pending', result);
-                    alert("Menunggu pembayaran Anda.");
-                },
-                onError: function (result: any) {
-                    console.log('error', result);
-                    alert("Pembayaran gagal!");
-                },
-                onClose: function () {
-                    alert('Anda menutup popup sebelum menyelesaikan pembayaran.');
-                }
-            });
-        } else {
-            notyf.success("Pembayaran manual berhasil dibuat!");
+        // Semua metode (manual, VA, QRIS) kini menggunakan alur yang sama:
+        // transaksi dibuat dengan status pending dan perlu validasi admin.
+        const method = paymentForm.value.payment_type;
+        const methodLabel = method === 'va' ? 'Virtual Account' : method === 'qris' ? 'QRIS' : 'Manual';
+        notyf.success(`Invoice ${methodLabel} berhasil dibuat! Menunggu validasi admin.`);
 
-            router.reload({
-                only: ['pendingTransactions'],
-                onSuccess: () => {
-                    paymentForm.value.selected_item_id = '';
-                }
-            });
-        }
+        router.reload({
+            only: ['pendingTransactions'],
+            onSuccess: () => {
+                paymentForm.value.selected_item_id = '';
+            }
+        });
 
     } catch (error: any) {
         if (error.response?.status === 422) {
@@ -339,8 +310,7 @@ const calculation = computed(() => {
     const ppn = 0;
 
     let fee = 0;
-    if (paymentForm.value.payment_type === 'va') fee = 4000;
-    else if (paymentForm.value.payment_type === 'qris') fee = subtotal * 0.007;
+    // Fee VA dan QRIS dihapus karena tidak lagi menggunakan payment gateway Midtrans
 
     const grandTotal = subtotal + fee;
 
@@ -897,7 +867,7 @@ const downloadSVG = () => {
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
                                         <CreditCard class="mx-auto mb-1" :size="16" />
                                         Virtual Account
-                                        <div class="text-[10px] opacity-70">Fee Rp 4.000</div>
+                                        <div class="text-[10px] opacity-70">Fee 0</div>
                                     </button>
 
                                     <button type="button" @click="paymentForm.payment_type = 'qris'" :class="paymentForm.payment_type === 'qris'
@@ -906,7 +876,7 @@ const downloadSVG = () => {
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
                                         <Ticket class="mx-auto mb-1" :size="16" />
                                         QRIS
-                                        <div class="text-[10px] opacity-70">Fee 0.7%</div>
+                                        <div class="text-[10px] opacity-70">Fee 0</div>
                                     </button>
                                 </div>
                             </div>

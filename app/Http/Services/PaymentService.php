@@ -117,10 +117,12 @@ class PaymentService
             }
 
             // 5. Create Transaction Record
+            // VA dan QRIS tidak lagi melalui Midtrans payment gateway.
+            // Menggunakan method 'debit' dan alur manual (pending → validasi admin).
             $trxMapping = [
                 'manual' => ['m' => 'manual', 'd' => null],
-                'va'     => ['m' => 'midtrans', 'd' => 'va'],
-                'qris'   => ['m' => 'midtrans', 'd' => 'qris']
+                'va'     => ['m' => 'debit',   'd' => 'va'],
+                'qris'   => ['m' => 'debit',   'd' => 'qris']
             ];
             $finalInstallmentId = ($trxType === 'installment_pt') ? $installmentPtId : null;
             $transaction = Transaction::create([
@@ -251,11 +253,9 @@ class PaymentService
 
     private static function calculatePaymentFee($method, $amountWithTax)
     {
-        return match ($method) {
-            'qris' => $amountWithTax * 0.007,
-            'va'   => 4000,
-            default => 0,
-        };
+        // Fee VA dan QRIS dihapus karena tidak lagi menggunakan payment gateway Midtrans.
+        // Semua metode tidak dikenakan biaya layanan.
+        return 0;
     }
 
     private static function applyPromoLogic($promo, &$price, &$bonuses, &$descriptions, $isGlobal)
