@@ -27,6 +27,7 @@ const form = useForm({
     name: '',
     phone_number: '',
     transaction_date: localDate,
+    payment_method: 'cash' as 'cash' | 'debit',
 });
 
 const notyf = new Notyf({
@@ -91,6 +92,31 @@ function submit() {
                                 <label class="block text-sm text-muted-foreground mb-1">Nomor HP</label>
                                 <input v-model="form.phone_number" type="text" class="w-full rounded-lg border border-input px-3 py-2 text-sm" />
                                 <div v-if="form.errors.phone_number" class="text-rose-600 text-sm mt-1">{{ form.errors.phone_number }}</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm text-muted-foreground mb-2">Metode Pembayaran</label>
+                                <div class="flex gap-3">
+                                    <button
+                                        type="button"
+                                        @click="form.payment_method = 'cash'"
+                                        :class="form.payment_method === 'cash'
+                                            ? 'bg-primary text-white ring-2 ring-primary shadow-md'
+                                            : 'bg-muted text-foreground hover:bg-muted/70'"
+                                        class="flex-1 flex flex-col items-center gap-1 rounded-xl px-4 py-3 text-sm font-medium transition-all cursor-pointer">
+                                        Cash
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="form.payment_method = 'debit'"
+                                        :class="form.payment_method === 'debit'
+                                            ? 'bg-primary text-white ring-2 ring-primary shadow-md'
+                                            : 'bg-muted text-foreground hover:bg-muted/70'"
+                                        class="flex-1 flex flex-col items-center gap-1 rounded-xl px-4 py-3 text-sm font-medium transition-all cursor-pointer">
+                                        Debit
+                                    </button>
+                                </div>
+                                <div v-if="form.errors.payment_method" class="text-rose-600 text-sm mt-1">{{ form.errors.payment_method }}</div>
                             </div>
 
                             <div class="flex justify-end">

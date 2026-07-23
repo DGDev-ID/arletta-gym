@@ -15,12 +15,11 @@ use Inertia\Inertia;
 
 class TransactionPerSessionController extends Controller
 {
-    private function applyFilters($query, Request $request, $allowedGymIds)
+    private function applyFilters($query, Request $request)
     {
+        // Filter gym hanya berlaku jika user secara eksplisit memilih gym dari filter UI
         if ($request->filled('gyms') && !in_array('all', $request->gyms)) {
             $query->whereIn('gym_id', $request->gyms);
-        } elseif ($allowedGymIds) {
-            $query->whereIn('gym_id', $allowedGymIds);
         }
 
         if ($request->filled('statuses') && !in_array('all', $request->statuses)) {
@@ -41,18 +40,13 @@ class TransactionPerSessionController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        // Determine gyms visible to the user (Super Admin -> all, Admin -> assigned gyms)
-        $allowedGymIds = null;
-        if ($user->hasRole('Super Admin')) {
-            $gyms = MasterGym::select('id', 'name', 'price_per_session')->orderBy('name')->get();
-        } else {
-            $allowedGymIds = GymAdmin::where('admin_id', $user->id)->pluck('gym_id');
-            $gyms = MasterGym::whereIn('id', $allowedGymIds)->select('id', 'name', 'price_per_session')->orderBy('name')->get();
-        }
+
+        // Semua user melihat semua gym di dropdown filter
+        $gyms = MasterGym::select('id', 'name', 'price_per_session')->orderBy('name')->get();
 
         $query = TransactionPerSession::with('gym');
 
-        $query = $this->applyFilters($query, $request, $allowedGymIds);
+        $query = $this->applyFilters($query, $request);
 
         // Sort by pending first, then by latest
         $query->orderByRaw("
@@ -67,27 +61,22 @@ class TransactionPerSessionController extends Controller
         $transactions = $query->paginate(10)->withQueryString();
 
         return Inertia::render('Transaction/TransactionPerSession/Index', [
-            'gyms' => $gyms,
+            'gyms'         => $gyms,
             'transactions' => $transactions,
-            'filters' => [
-                'gyms' => $request->gyms ?? ['all'],
-                'statuses' => $request->statuses ?? ['all'],
+            'filters'      => [
+                'gyms'       => $request->gyms ?? ['all'],
+                'statuses'   => $request->statuses ?? ['all'],
                 'date_start' => $request->date_start ?? '',
-                'date_end' => $request->date_end ?? '',
+                'date_end'   => $request->date_end ?? '',
             ],
+            'isSuperAdmin' => $user->hasRole('Super Admin'),
         ]);
     }
 
     public function create(Request $request)
     {
-        $user = $request->user();
-
-        if ($user->hasRole('Super Admin')) {
-            $gyms = MasterGym::select('id', 'name', 'price_per_session')->orderBy('name')->get();
-        } else {
-            $gymIds = GymAdmin::where('admin_id', $user->id)->pluck('gym_id');
-            $gyms = MasterGym::whereIn('id', $gymIds)->select('id', 'name', 'price_per_session')->orderBy('name')->get();
-        }
+        // Semua user dapat memilih semua gym saat membuat transaksi
+        $gyms = MasterGym::select('id', 'name', 'price_per_session')->orderBy('name')->get();
 
         return Inertia::render('Transaction/TransactionPerSession/Create', [
             'gyms' => $gyms,
@@ -97,10 +86,11 @@ class TransactionPerSessionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'gym_id' => 'required|exists:master_gyms,id',
-            'name' => 'required|string',
-            'phone_number' => 'required|string',
+            'gym_id'           => 'required|exists:master_gyms,id',
+            'name'             => 'required|string',
+            'phone_number'     => 'required|string',
             'transaction_date' => 'nullable|date',
+            'payment_method'   => 'required|in:cash,debit',
         ]);
 
         $phone = $request->phone_number;
@@ -112,20 +102,21 @@ class TransactionPerSessionController extends Controller
             $phone = '62' . $phone;
         }
 
-        $request->merge([
-            'phone_number' => $phone
-        ]);
+        $request->merge(['phone_number' => $phone]);
 
-        $gym = MasterGym::findOrFail($request->gym_id);
+        $gym   = MasterGym::findOrFail($request->gym_id);
         $price = $gym->price_per_session !== null ? (float) $gym->price_per_session : 0.00;
 
         TransactionPerSession::create([
-            'gym_id' => $request->gym_id,
-            'name' => $request->name,
-            'phone_number' => $request->phone_number,
-            'price' => $price,
-            'status' => 'pending',
-            'created_at' => $request->transaction_date ? \Carbon\Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s') : now(),
+            'gym_id'         => $request->gym_id,
+            'name'           => $request->name,
+            'phone_number'   => $request->phone_number,
+            'price'          => $price,
+            'payment_method' => $request->payment_method,
+            'status'         => 'pending',
+            'created_at'     => $request->transaction_date
+                ? \Carbon\Carbon::parse($request->transaction_date)->format('Y-m-d H:i:s')
+                : now(),
         ]);
 
         return redirect()->route('transaction.transaction-per-session.index');
@@ -160,5 +151,20 @@ class TransactionPerSessionController extends Controller
         }
 
         return redirect()->back();
+    }
+
+    /**
+     * Hapus transaksi per session — hanya bisa diakses oleh Super Admin.
+     */
+    public function destroy(Request $request, $id)
+    {
+        if (!$request->user()->hasRole('Super Admin')) {
+            abort(403, 'Hanya Super Admin yang dapat menghapus transaksi ini.');
+        }
+
+        $trx = TransactionPerSession::findOrFail($id);
+        $trx->delete();
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dihapus.');
     }
 }

@@ -12,9 +12,11 @@ class TransactionPerSession extends Model
         'name',
         'phone_number',
         'price',
+        'payment_method',
         'status',
         'created_at',
     ];
+
 
     protected $casts = [
         'price' => 'decimal:2',

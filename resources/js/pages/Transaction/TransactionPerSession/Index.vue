@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Notyf } from 'notyf';
 import 'notyf/notyf.min.css';
 import Pagination from '@/components/Pagination.vue';
-import { Filter } from 'lucide-vue-next';
+import { Filter, Trash2 } from 'lucide-vue-next';
 
 const props = defineProps<{
     gyms: { id: number; name: string; price_per_session?: number }[];
     transactions: any;
+    isSuperAdmin: boolean;
     filters: {
         gyms: (string | number)[];
         statuses: string[];
@@ -89,6 +90,7 @@ const formattedTransactions = computed(() => {
         phone: trx.phone_number,
         gym: trx.gym?.name || '-',
         price: trx.price || 0,
+        payment_method: trx.payment_method || 'cash',
         status: trx.status,
         date: new Date(trx.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
         raw: trx,
@@ -101,6 +103,7 @@ function goToCreate() {
 
 const notyf = new Notyf({ duration: 3000, position: { x: 'right', y: 'bottom' } });
 const processingId = ref<number | null>(null);
+const deletingId = ref<number | null>(null);
 
 function setStatus(id: number, status: 'success' | 'failed') {
     if (!confirm('Yakin ingin mengubah status?')) return;
@@ -116,6 +119,24 @@ function setStatus(id: number, status: 'success' | 'failed') {
         },
         onFinish: () => {
             processingId.value = null;
+        }
+    });
+}
+
+function deleteTransaction(id: number) {
+    if (!confirm('Yakin ingin menghapus transaksi ini? Tindakan ini tidak bisa dibatalkan.')) return;
+    deletingId.value = id;
+
+    router.delete(`/transaction/transaction-per-session/${id}`, {
+        preserveState: false,
+        onSuccess: () => {
+            notyf.success('Transaksi berhasil dihapus.');
+        },
+        onError: () => {
+            notyf.error('Gagal menghapus transaksi.');
+        },
+        onFinish: () => {
+            deletingId.value = null;
         }
     });
 }
@@ -214,6 +235,7 @@ function setStatus(id: number, status: 'success' | 'failed') {
                                 <th class="px-6 py-4 text-left font-medium">No HP</th>
                                 <th class="px-6 py-4 text-left font-medium">Gym</th>
                                 <th class="px-6 py-4 text-left font-medium">Harga</th>
+                                <th class="px-6 py-4 text-left font-medium">Metode</th>
                                 <th class="px-6 py-4 text-left font-medium">Tanggal</th>
                                 <th class="px-6 py-4 text-left font-medium">Status</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
@@ -226,6 +248,14 @@ function setStatus(id: number, status: 'success' | 'failed') {
                                 <td class="px-6 py-4">{{ trx.phone }}</td>
                                 <td class="px-6 py-4">{{ trx.gym }}</td>
                                 <td class="px-6 py-4 font-semibold">{{ formatRupiah(trx.price) }}</td>
+                                <td class="px-6 py-4">
+                                    <span :class="trx.payment_method === 'debit'
+                                        ? 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-800'
+                                        : 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-800'"
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset capitalize">
+                                        {{ trx.payment_method }}
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4">{{ trx.date }}</td>
                                 <td class="px-6 py-4">
                                     <span v-if="trx.status === 'success'" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-800">
@@ -242,19 +272,29 @@ function setStatus(id: number, status: 'success' | 'failed') {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <div v-if="trx.status === 'pending'" class="flex justify-end gap-2">
-                                        <button @click="setStatus(trx.id, 'success')" :disabled="processingId === trx.id" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition cursor-pointer disabled:opacity-50">
-                                            Success
-                                        </button>
-                                        <button @click="setStatus(trx.id, 'failed')" :disabled="processingId === trx.id" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition cursor-pointer disabled:opacity-50">
-                                            Failed
+                                    <div class="flex justify-end gap-2">
+                                        <template v-if="trx.status === 'pending'">
+                                            <button @click="setStatus(trx.id, 'success')" :disabled="processingId === trx.id" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition cursor-pointer disabled:opacity-50">
+                                                Success
+                                            </button>
+                                            <button @click="setStatus(trx.id, 'failed')" :disabled="processingId === trx.id" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition cursor-pointer disabled:opacity-50">
+                                                Failed
+                                            </button>
+                                        </template>
+                                        <!-- Tombol hapus hanya untuk Super Admin -->
+                                        <button
+                                            v-if="props.isSuperAdmin"
+                                            @click="deleteTransaction(trx.id)"
+                                            :disabled="deletingId === trx.id"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-400 transition cursor-pointer disabled:opacity-50"
+                                            title="Hapus Transaksi">
+                                            <Trash2 :size="14" />
                                         </button>
                                     </div>
-                                    <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
                             </tr>
                             <tr v-if="formattedTransactions.length === 0">
-                                <td colspan="8" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi ditemukan.</td>
+                                <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Tidak ada transaksi ditemukan.</td>
                             </tr>
                         </tbody>
                     </table>
