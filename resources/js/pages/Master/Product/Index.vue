@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
+import Pagination from '@/components/Pagination.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Pencil, Trash2 } from 'lucide-vue-next';
 import { formatRupiah } from '@/helpers/formatRupiah';
@@ -79,6 +80,10 @@ const deleteProduct = (id: number) => {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="mt-4 px-4" v-if="products.links">
+                    <Pagination :links="products.links" preserveScroll />
                 </div>
 
             </div>

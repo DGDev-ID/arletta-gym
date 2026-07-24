@@ -28,9 +28,9 @@ class TransactionPosController extends Controller
 
         $selectedGymId = $request->get('gym_id') ?? ($gyms->first()->id ?? null);
 
-        $products = [];
+        $products = null;
         if ($selectedGymId) {
-            $products = MasterProduct::where('gym_id', $selectedGymId)->with('category')->get();
+            $products = MasterProduct::where('gym_id', $selectedGymId)->with('category')->paginate(10)->withQueryString();
         }
 
         $pendingQuery = TransactionProductOut::where('status', 'pending')->with(['products.product.category']);

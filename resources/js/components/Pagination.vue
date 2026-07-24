@@ -3,6 +3,8 @@ import { Link } from '@inertiajs/vue3';
 
 defineProps<{
   links: Array<{ url: string | null; label: string; active: boolean }>;
+  preserveState?: boolean;
+  preserveScroll?: boolean;
 }>();
 
 const formatLabel = (label: string) => {
@@ -31,6 +33,8 @@ const formatLabel = (label: string) => {
         <Link
           v-else
           :href="link.url"
+          :preserve-state="preserveState"
+          :preserve-scroll="preserveScroll"
           class="px-3 py-2 text-sm border border-gray-300"
           :class="{
             'z-10 bg-primary border-primary text-white': link.active,

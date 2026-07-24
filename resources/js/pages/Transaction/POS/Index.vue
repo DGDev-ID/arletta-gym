@@ -13,7 +13,7 @@ import { formatRupiah } from '@/helpers/formatRupiah';
 
 const props = defineProps<{
     gyms: { id: number; name: string }[];
-    products: any[];
+    products: any;
     pendingTransactions: any[];
     successTransactions: any; // paginated object dari Laravel
     selectedGymId: number | null;
@@ -53,7 +53,7 @@ const notyf = new Notyf({
     dismissible: true,
 });
 
-const products = computed(() => props.products || []);
+const products = computed(() => props.products?.data || []);
 
 const cartItems = computed(() => {
     return Object.entries(cart.value).map(([productId, qty]) => {
@@ -285,6 +285,9 @@ function deleteSuccessTransaction(id: number) {
                                     </tr>
                                 </tbody>
                             </table>
+                            <div class="p-4" v-if="props.products?.links">
+                                <Pagination :links="props.products.links" preserveState />
+                            </div>
                         </div>
 
                         <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
