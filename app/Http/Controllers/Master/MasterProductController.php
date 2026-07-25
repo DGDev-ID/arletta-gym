@@ -16,10 +16,17 @@ class MasterProductController extends Controller
 {
     public function index(Request $request)
     {
-        $products = MasterProduct::with(['category', 'gym'])->latest()->paginate(10);
+        $search = $request->get('search');
+
+        $products = MasterProduct::with(['category', 'gym'])
+            ->when($search, fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%']))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('Master/Product/Index', [
-            'products' => $products
+            'products' => $products,
+            'filters'  => ['search' => $search],
         ]);
     }
 
@@ -43,12 +50,18 @@ class MasterProductController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'gym_id' => 'required|exists:master_gyms,id',
+            'gym_id'              => 'required|exists:master_gyms,id',
             'product_category_id' => 'required|exists:master_product_categories,id',
-            'name' => 'required|string|max:255',
-            'buy_price' => 'required|numeric|min:0',
-            'sell_price' => 'required|numeric|min:0',
+            'name'                => 'required|string|max:255',
+            'buy_price'           => 'required|numeric|min:0',
+            'sell_price'          => 'required|numeric|min:0',
         ]);
+
+        // Cek duplikasi nama produk secara case-insensitive
+        $exists = MasterProduct::whereRaw('LOWER(name) = ?', [strtolower($validated['name'])])->exists();
+        if ($exists) {
+            return back()->withErrors(['name' => 'Nama produk sudah ada, gunakan nama lain.'])->withInput();
+        }
 
         MasterProduct::create($validated);
 

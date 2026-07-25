@@ -4,6 +4,8 @@ import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { Notyf } from 'notyf';
+import 'notyf/notyf.min.css';
 
 const props = defineProps<{
     gyms: { id: number; name: string }[];
@@ -15,6 +17,13 @@ const breadcrumbItems: BreadcrumbItem[] = [
     { title: 'Create', href: '/master/product/create' },
 ];
 
+const notyf = new Notyf({
+    duration: 4000,
+    position: { x: 'right', y: 'bottom' },
+    ripple: true,
+    dismissible: true,
+});
+
 const form = useForm({
     gym_id: '',
     product_category_id: '',
@@ -24,7 +33,15 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post('/master/product');
+    form.post('/master/product', {
+        onError: (errors) => {
+            if (errors.name) {
+                notyf.error(errors.name);
+            } else {
+                notyf.error('Gagal menyimpan produk. Periksa kembali form Anda.');
+            }
+        },
+    });
 };
 </script>
 
@@ -64,6 +81,7 @@ const submit = () => {
                         <div class="space-y-2">
                             <label class="text-sm font-medium">Nama Produk</label>
                             <Input v-model="form.name" placeholder="Contoh: Protein Bar" />
+                            <p v-if="form.errors.name" class="text-xs text-destructive">{{ form.errors.name }}</p>
                         </div>
 
                         <div class="grid md:grid-cols-2 gap-6">

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Notyf } from 'notyf';
 import 'notyf/notyf.min.css';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import Input from '@/components/ui/input/Input.vue';
 import Pagination from '@/components/Pagination.vue';
-import { Trash2 } from 'lucide-vue-next';
+import { Trash2, Search } from 'lucide-vue-next';
 import { type BreadcrumbItem } from '@/types';
 import { formatRupiah } from '@/helpers/formatRupiah';
 
@@ -18,6 +18,7 @@ const props = defineProps<{
     successTransactions: any; // paginated object dari Laravel
     selectedGymId: number | null;
     isSuperAdmin: boolean;
+    filters: { product_search: string | null };
 }>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -25,6 +26,19 @@ const breadcrumbItems: BreadcrumbItem[] = [
 ];
 
 const selectedGym = ref(props.selectedGymId ?? (props.gyms && props.gyms[0] ? props.gyms[0].id : null));
+
+const productSearch = ref(props.filters?.product_search ?? '');
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(productSearch, (val) => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        router.get('/transaction/pos', {
+            gym_id: selectedGym.value,
+            product_search: val || undefined,
+        }, { preserveState: true, preserveScroll: true });
+    }, 400);
+});
 
 const cart = ref<Record<number, number>>({});
 
@@ -65,6 +79,7 @@ const cartItems = computed(() => {
 const cartTotal = computed(() => cartItems.value.reduce((sum, it) => sum + (it.product.sell_price * it.quantity), 0));
 
 const changeGym = () => {
+    productSearch.value = '';
     router.get('/transaction/pos', { gym_id: selectedGym.value }, { preserveState: true });
     cart.value = {};
 };
@@ -215,7 +230,7 @@ function deleteSuccessTransaction(id: number) {
                 <div class="grid md:grid-cols-3 gap-6">
 
                     <div class="md:col-span-2 space-y-4">
-                        <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex flex-col items-start gap-4">
                             <div class="flex items-center gap-2">
                                 <label class="text-sm font-medium whitespace-nowrap">Pilih Gym</label>
                                 <select v-model="selectedGym" @change="changeGym"
@@ -223,7 +238,8 @@ function deleteSuccessTransaction(id: number) {
                                     <option v-for="g in props.gyms" :key="g.id" :value="g.id">{{ g.name }}</option>
                                 </select>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center justify-between w-full gap-4">
+                                <div class="flex items-center gap-2">
                                 <label class="text-sm font-medium whitespace-nowrap">Nama Kasir</label>
                                 <input
                                     v-model="kasirName"
@@ -235,9 +251,22 @@ function deleteSuccessTransaction(id: number) {
                                 />
                                 <span v-if="kasirName" class="text-xs text-emerald-600 font-medium">✓ Tersimpan</span>
                             </div>
+                            <!-- Search Produk -->
+                        <div class="relative w-full sm:w-64 ml-auto">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                                <Search :size="16" />
+                            </span>
+                            <input
+                                v-model="productSearch"
+                                type="text"
+                                placeholder="Cari nama produk..."
+                                class="w-full h-10 pl-9 pr-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            />
                         </div>
-
+                        </div>
+                        </div>
                         <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto w-full">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-muted/50">
                                     <tr class="text-muted-foreground">
@@ -285,6 +314,7 @@ function deleteSuccessTransaction(id: number) {
                                     </tr>
                                 </tbody>
                             </table>
+                            </div>
                             <div class="p-4" v-if="props.products?.links">
                                 <Pagination :links="props.products.links" preserveState />
                             </div>
@@ -295,6 +325,7 @@ function deleteSuccessTransaction(id: number) {
                                 <h3 class="font-semibold">Pending Transactions</h3>
                             </div>
 
+                            <div class="overflow-x-auto w-full">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-muted/50">
                                     <tr class="text-muted-foreground">
@@ -327,6 +358,7 @@ function deleteSuccessTransaction(id: number) {
                                     </tr>
                                 </tbody>
                             </table>
+                            </div>
                         </div>
 
                     </div>

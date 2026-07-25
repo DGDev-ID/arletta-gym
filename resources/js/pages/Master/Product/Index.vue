@@ -3,14 +3,25 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Pencil, Trash2 } from 'lucide-vue-next';
+import { Pencil, Trash2, Search } from 'lucide-vue-next';
 import { formatRupiah } from '@/helpers/formatRupiah';
+import { ref, watch } from 'vue';
 
 const breadcrumbItems = [
     { title: 'Master Products', href: '/master/product' }
 ];
 
-const props = defineProps<{ products: any }>();
+const props = defineProps<{ products: any; filters: { search: string | null } }>();
+
+const searchQuery = ref(props.filters?.search ?? '');
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, (val) => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        router.get('/master/product', { search: val || undefined }, { preserveState: true, preserveScroll: true });
+    }, 400);
+});
 
 const deleteProduct = (id: number) => {
     if (confirm('Apakah Anda yakin ingin menghapus product ini?')) {
@@ -34,6 +45,19 @@ const deleteProduct = (id: number) => {
                         class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
                         Tambah Product
                     </Link>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="relative w-full sm:w-64 ml-auto">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                        <Search :size="16" />
+                    </span>
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Cari nama produk..."
+                        class="w-full h-10 pl-9 pr-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
                 </div>
 
                 <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">

@@ -27,10 +27,15 @@ class TransactionPosController extends Controller
         $gyms = MasterGym::select('id', 'name')->orderBy('name')->get();
 
         $selectedGymId = $request->get('gym_id') ?? ($gyms->first()->id ?? null);
+        $productSearch = $request->get('product_search');
 
         $products = null;
         if ($selectedGymId) {
-            $products = MasterProduct::where('gym_id', $selectedGymId)->with('category')->paginate(10)->withQueryString();
+            $products = MasterProduct::where('gym_id', $selectedGymId)
+                ->when($productSearch, fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($productSearch) . '%']))
+                ->with('category')
+                ->paginate(10)
+                ->withQueryString();
         }
 
         $pendingQuery = TransactionProductOut::where('status', 'pending')->with(['products.product.category']);
@@ -48,6 +53,7 @@ class TransactionPosController extends Controller
             'successTransactions' => $successTransactions,
             'selectedGymId'       => $selectedGymId,
             'isSuperAdmin'        => $user->hasRole('Super Admin'),
+            'filters'             => ['product_search' => $productSearch],
         ]);
     }
 
