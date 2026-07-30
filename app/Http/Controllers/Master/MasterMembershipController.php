@@ -100,7 +100,7 @@ class MasterMembershipController extends Controller
 
     public function destroy(MasterMembership $membership)
     {
-        $membership->promo()->delete();
+        $membership->membershipPromos()->delete();
         $membership->delete();
 
         return redirect()->back()->with('success', 'Membership berhasil dihapus.');
