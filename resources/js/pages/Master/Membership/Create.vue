@@ -107,7 +107,7 @@ const submit = () => {
 
                                 <div class="space-y-2">
                                     <label class="text-xs font-medium">Kode Unik Promo <br> *Masukkan GLOBAL jika promo berlaku global</label>
-                                    <Input v-model="promo.unique_code" :placeholder="`PROMO-${index + 1}`" />
+                                    <Input v-model="promo.unique_code" @update:model-value="val => promo.unique_code = String(val || '').toUpperCase().replace(/\s/g, '')" :placeholder="`PROMO-${index + 1}`" />
                                     <p v-if="form.errors[`promos.${index}.unique_code`]"
                                         class="text-xs text-destructive">
                                         {{ form.errors[`promos.${index}.unique_code`] }}

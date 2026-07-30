@@ -113,7 +113,7 @@ const submit = () => {
 
                                 <div class="space-y-2">
                                     <label class="text-xs font-medium">Kode Unik Promo</label>
-                                    <Input v-model="promo.unique_code" />
+                                    <Input v-model="promo.unique_code" @update:model-value="val => promo.unique_code = String(val || '').toUpperCase().replace(/\s/g, '')" />
 
                                     <p v-if="(form.errors as any)[`promos.${index}.unique_code`]"
                                         class="text-xs text-destructive">
