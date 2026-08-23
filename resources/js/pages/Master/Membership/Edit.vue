@@ -51,7 +51,7 @@ const submit = () => {
         <Head title="Edit Membership" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6">
+            <div class="max-w-7xl mx-auto px-6">
                 <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
                     <Heading variant="small" title="Edit Membership"
@@ -113,7 +113,12 @@ const submit = () => {
 
                                 <div class="space-y-2">
                                     <label class="text-xs font-medium">Kode Unik Promo</label>
-                                    <Input v-model="promo.unique_code" @update:model-value="val => promo.unique_code = String(val || '').toUpperCase().replace(/\s/g, '')" />
+                                    <Input
+                                        v-model="promo.unique_code"
+                                        style="text-transform: uppercase"
+                                        @keydown.space.prevent
+                                        @input="(e: any) => { promo.unique_code = e.target.value.toUpperCase().replace(/\s/g, '') }"
+                                    />
 
                                     <p v-if="(form.errors as any)[`promos.${index}.unique_code`]"
                                         class="text-xs text-destructive">

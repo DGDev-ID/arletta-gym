@@ -45,7 +45,7 @@ const submit = () => {
         <Head title="Tambah Membership" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6">
+            <div class="max-w-7xl mx-auto px-6">
                 <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
                     <Heading variant="small" title="Tambah Membership Baru"

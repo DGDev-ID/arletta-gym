@@ -47,12 +47,12 @@ const masterDataNavItems: NavItem[] = [
         icon: Package, 
         roles: ["Super Admin"]
     },
-    {
-        title: "Bundle Package",
-        href: '/master/bundle-package',
-        icon: Gift,
-        roles: ["Super Admin"]
-    },
+    // {
+    //     title: "Bundle Package",
+    //     href: '/master/bundle-package',
+    //     icon: Gift,
+    //     roles: ["Super Admin"]
+    // },
     {
         title: "Gym Class",
         href: '/master/gym-class',

@@ -180,40 +180,20 @@ const hasActiveMembershipForSelectedGym = computed(() => {
     return new Date(ug.membership_end_at) > new Date();
 });
 
-// LOGIKA BARU: Tentukan apakah input Tanggal Mulai perlu di-render
+// Tanggal mulai selalu ditampilkan untuk membership & bundle
+// agar admin bisa memilih tanggal mulai, termasuk tanggal lampau
 const showMembershipDateInput = computed(() => {
-    // Bundle juga perlu tanggal mulai membership (sama seperti membership biasa)
     if (paymentForm.value.transaction_type !== 'membership' && paymentForm.value.transaction_type !== 'bundle') return false;
-
-    const ug = selectedUserGym.value;
-    if (!ug || !ug.membership_end_at) return true;
-
-    const endDate = new Date(ug.membership_end_at);
-    const today = new Date();
-
-    endDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    if (endDate <= today) return true;
-
-    return false;
+    return true; // Selalu tampilkan
 });
 
 // State untuk input Tanggal Mulai
 const membershipStartInput = ref<string | null>(toISODate(new Date()));
 
-// Watcher untuk sinkronisasi kapan paket atau gym berubah
+// Watcher: set default tanggal mulai saat gym/paket berubah
 watch([() => paymentForm.value.gym_id, () => selectedItem.value], () => {
-    if (showMembershipDateInput.value) {
-        // Jika UI input ditampilkan (user baru / berakhir hari ini), set default ke hari ini
-        membershipStartInput.value = toISODate(new Date());
-    } else {
-        // Jika UI disembunyikan (masih aktif), siapkan start_date di background setelah masa aktif habis
-        const ug = selectedUserGym.value;
-        if (ug && ug.membership_end_at) {
-            membershipStartInput.value = toISODate(new Date(ug.membership_end_at));
-        }
-    }
+    // Selalu default ke hari ini saat paket/gym berubah
+    membershipStartInput.value = toISODate(new Date());
 });
 
 const editableMembershipStartDate = computed(() => {
@@ -841,7 +821,7 @@ const downloadSVG = () => {
 
                             <div v-if="paymentForm.gym_id" class="space-y-2">
                                 <label class="text-xs font-bold uppercase text-muted-foreground">Jenis Transaksi</label>
-                                <div class="grid grid-cols-3 gap-3">
+                                <div class="grid grid-cols-2 gap-3">
                                     <button type="button" @click="paymentForm.transaction_type = 'membership'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'membership' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Membership</button>
@@ -849,11 +829,11 @@ const downloadSVG = () => {
                                         :class="paymentForm.transaction_type === 'pt' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Personal
                                         Trainer</button>
-                                    <button type="button" @click="paymentForm.transaction_type = 'bundle'; paymentForm.selected_item_id = ''"
+                                    <!-- <button type="button" @click="paymentForm.transaction_type = 'bundle'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'bundle' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
-                                        🎁 Bundle
-                                    </button>
+                                        Bundle
+                                    </button> -->
                                 </div>
                             </div>
 
@@ -915,7 +895,7 @@ const downloadSVG = () => {
                                 <template v-if="showMembershipDateInput">
                                     <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai</label>
                                     <div class="grid grid-cols-2 gap-3">
-                                        <input type="date" v-model="membershipStartInput" :min="toISODate(new Date())"
+                                        <input type="date" v-model="membershipStartInput"
                                             class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
                                         <input type="date" :value="toISODate(editableMembershipEndDate)" disabled
                                             class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
@@ -1093,8 +1073,13 @@ const downloadSVG = () => {
                             <div v-if="paymentForm.transaction_type !== 'bundle'" class="space-y-2 pt-4">
                                 <div class="flex gap-2">
                                     <div class="relative flex-1">
-                                        <Input v-model="paymentForm.promo_code" placeholder="Punya kode promo lain?"
-                                            class="rounded-xl h-11 pr-10" />
+                                        <Input
+                                            v-model="paymentForm.promo_code"
+                                            placeholder="Punya kode promo lain?"
+                                            class="rounded-xl h-11 pr-10 uppercase"
+                                            style="text-transform: uppercase"
+                                            @input="(e: any) => { paymentForm.promo_code = e.target.value.toUpperCase().replace(/\s/g, '') }"
+                                        />
                                         <button v-if="appliedManualPromo"
                                             @click="appliedManualPromo = null; paymentForm.promo_code = ''"
                                             class="absolute right-3 top-3 text-red-500 hover:text-red-700">
