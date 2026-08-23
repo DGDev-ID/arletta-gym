@@ -91,14 +91,24 @@ interface PtPackage {
     id: string | number;
     [key: string]: any;
 }
+interface BundlePackage {
+    id: string | number;
+    name: string;
+    membership_duration_in_days: number;
+    pt_sessions: number;
+    price: number;
+    description?: string;
+    [key: string]: any;
+}
 interface GymData {
     memberships: Membership[];
     pt_packages: PtPackage[];
+    bundle_packages: BundlePackage[];
 }
 
 interface PaymentForm {
     gym_id: string;
-    transaction_type: 'membership' | 'pt' | '';
+    transaction_type: 'membership' | 'pt' | 'bundle' | '';
     selected_item_id: string | number;
     payment_type: string;
     payment_mode: 'full_payment' | 'dp_payment';
@@ -116,7 +126,7 @@ const paymentForm = ref<PaymentForm>({
     promo_code: '',
 });
 
-const gymData = ref<GymData>({ memberships: [], pt_packages: [] });
+const gymData = ref<GymData>({ memberships: [], pt_packages: [], bundle_packages: [] });
 const appliedPromo = ref(null);
 const isLoadingGym = ref(false);
 const appliedManualPromo = ref<any>(null);
@@ -142,6 +152,9 @@ const approveTransaction = (id: number | string) => {
 const selectedItem = computed(() => {
     if (paymentForm.value.transaction_type === 'membership') {
         return gymData.value.memberships.find(m => m.id === paymentForm.value.selected_item_id);
+    }
+    if (paymentForm.value.transaction_type === 'bundle') {
+        return gymData.value.bundle_packages.find(b => b.id === paymentForm.value.selected_item_id);
     }
     return gymData.value.pt_packages.find(p => p.id === paymentForm.value.selected_item_id);
 });
@@ -169,23 +182,20 @@ const hasActiveMembershipForSelectedGym = computed(() => {
 
 // LOGIKA BARU: Tentukan apakah input Tanggal Mulai perlu di-render
 const showMembershipDateInput = computed(() => {
-    if (paymentForm.value.transaction_type !== 'membership') return false;
+    // Bundle juga perlu tanggal mulai membership (sama seperti membership biasa)
+    if (paymentForm.value.transaction_type !== 'membership' && paymentForm.value.transaction_type !== 'bundle') return false;
 
     const ug = selectedUserGym.value;
-    // Tampilkan jika User baru / belum punya record membership sama sekali
     if (!ug || !ug.membership_end_at) return true;
 
     const endDate = new Date(ug.membership_end_at);
     const today = new Date();
 
-    // Set waktu jam/menit ke 00:00 untuk komparasi tanggal yang murni
     endDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
 
-    // Tampilkan jika Membership berakhir HARI INI atau SUDAH LEWAT
     if (endDate <= today) return true;
 
-    // Sembunyikan opsi jika Membership masih aktif (dan bukan hari ini selesainya)
     return false;
 });
 
@@ -213,7 +223,10 @@ const editableMembershipStartDate = computed(() => {
 
 const editableMembershipEndDate = computed(() => {
     if (!editableMembershipStartDate.value || !selectedItem.value) return null;
-    const days = selectedItem.value.duration_in_days || 0;
+    // Untuk bundle gunakan membership_duration_in_days, untuk membership gunakan duration_in_days
+    const days = paymentForm.value.transaction_type === 'bundle'
+        ? (selectedItem.value.membership_duration_in_days || 0)
+        : (selectedItem.value.duration_in_days || 0);
     const start = new Date(editableMembershipStartDate.value);
     const end = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
     return end;
@@ -242,22 +255,31 @@ const handleGeneratePayment = async () => {
     isGenerating.value = true;
 
     try {
-        const payload = {
+        const payload: any = {
             user_id: props.user.id,
             gym_id: paymentForm.value.gym_id,
             transaction_type: paymentForm.value.transaction_type,
             type_id: paymentForm.value.selected_item_id,
             payment_method: paymentForm.value.payment_type,
-            payment_type: paymentForm.value.payment_mode,
-            dp_percent: paymentForm.value.payment_mode === 'dp_payment' ? paymentForm.value.dp_percent : null,
-            promo_code: paymentForm.value.promo_code || null,
         };
 
-        // Otomatis menempelkan parameter start_at dari state watcher di atas
-        if (paymentForm.value.transaction_type === 'membership') {
+        // Bundle: always full payment, no promo
+        if (paymentForm.value.transaction_type === 'bundle') {
             if (membershipStartInput.value) {
                 payload.start_at = membershipStartInput.value;
             }
+        } else if (paymentForm.value.transaction_type === 'membership') {
+            payload.payment_type = paymentForm.value.payment_mode;
+            payload.dp_percent = paymentForm.value.payment_mode === 'dp_payment' ? paymentForm.value.dp_percent : null;
+            payload.promo_code = paymentForm.value.promo_code || null;
+            if (membershipStartInput.value) {
+                payload.start_at = membershipStartInput.value;
+            }
+        } else {
+            // PT
+            payload.payment_type = paymentForm.value.payment_mode;
+            payload.dp_percent = paymentForm.value.payment_mode === 'dp_payment' ? paymentForm.value.dp_percent : null;
+            payload.promo_code = paymentForm.value.promo_code || null;
         }
 
         const response = await axios.post('/management/user/generate-payment', payload);
@@ -288,7 +310,26 @@ const handleGeneratePayment = async () => {
 };
 
 const calculation = computed(() => {
-    const basePrice = selectedItem.value?.price || 0;
+    const calculation_basePrice = selectedItem.value?.price || 0;
+    const isBundle = paymentForm.value.transaction_type === 'bundle';
+
+    // Bundle: harga fixed, tidak ada promo
+    if (isBundle) {
+        return {
+            basePrice: calculation_basePrice,
+            totalDiscount: 0,
+            totalBonusDays: 0,
+            totalBonusSessions: 0,
+            subtotal: calculation_basePrice,
+            ppn: 0,
+            fee: 0,
+            grandTotal: calculation_basePrice,
+            payableNow: calculation_basePrice,
+            remaining: 0,
+        };
+    }
+
+    const basePrice = calculation_basePrice;
 
     let totalDiscount = 0;
     let totalBonusDays = 0;
@@ -800,18 +841,24 @@ const downloadSVG = () => {
 
                             <div v-if="paymentForm.gym_id" class="space-y-2">
                                 <label class="text-xs font-bold uppercase text-muted-foreground">Jenis Transaksi</label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <button type="button" @click="paymentForm.transaction_type = 'membership'"
+                                <div class="grid grid-cols-3 gap-3">
+                                    <button type="button" @click="paymentForm.transaction_type = 'membership'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'membership' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Membership</button>
-                                    <button type="button" @click="paymentForm.transaction_type = 'pt'"
+                                    <button type="button" @click="paymentForm.transaction_type = 'pt'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'pt' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Personal
                                         Trainer</button>
+                                    <button type="button" @click="paymentForm.transaction_type = 'bundle'; paymentForm.selected_item_id = ''"
+                                        :class="paymentForm.transaction_type === 'bundle' ? 'bg-primary text-white' : 'bg-muted'"
+                                        class="p-3 rounded-xl text-sm font-medium transition-all">
+                                        🎁 Bundle
+                                    </button>
                                 </div>
                             </div>
 
-                            <div v-if="paymentForm.transaction_type"
+                            <!-- List paket Membership / PT biasa -->
+                            <div v-if="paymentForm.transaction_type && paymentForm.transaction_type !== 'bundle'"
                                 class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                                 <div v-for="item in (paymentForm.transaction_type === 'membership' ? gymData.memberships : gymData.pt_packages)"
                                     :key="item.id" @click="paymentForm.selected_item_id = item.id"
@@ -833,6 +880,34 @@ const downloadSVG = () => {
                                         class="mt-2 inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-bold">
                                         <Ticket :size="10" /> PROMO GLOBAL AKTIF
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- List paket Bundle -->
+                            <div v-if="paymentForm.transaction_type === 'bundle'"
+                                class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                                <div v-if="gymData.bundle_packages.length === 0"
+                                    class="text-center py-6 text-sm text-muted-foreground italic">
+                                    Belum ada paket bundle untuk gym ini.
+                                </div>
+                                <div v-for="bundle in gymData.bundle_packages" :key="bundle.id"
+                                    @click="paymentForm.selected_item_id = bundle.id"
+                                    :class="paymentForm.selected_item_id === bundle.id ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-muted'"
+                                    class="p-4 border rounded-xl cursor-pointer hover:bg-muted/50 transition-all">
+
+                                    <div class="flex justify-between items-start mb-2">
+                                        <p class="font-bold text-sm">🎁 {{ bundle.name }}</p>
+                                        <p class="font-black text-primary">{{ formatRupiah(bundle.price) }}</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-semibold">
+                                            📅 {{ bundle.membership_duration_in_days }} hari membership
+                                        </span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-semibold">
+                                            💪 {{ bundle.pt_sessions }} sesi PT
+                                        </span>
+                                    </div>
+                                    <p v-if="bundle.description" class="mt-1.5 text-xs text-muted-foreground">{{ bundle.description }}</p>
                                 </div>
                             </div>
 
@@ -881,6 +956,7 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
+                            <!-- Jenis Pembayaran DP/Full: hanya untuk PT biasa -->
                             <div v-if="paymentForm.selected_item_id
                                 && paymentForm.transaction_type === 'pt'" class="space-y-2">
                                 <label class="text-xs font-bold uppercase text-muted-foreground">
@@ -928,7 +1004,21 @@ const downloadSVG = () => {
                                     <span class="font-medium">{{ formatRupiah(calculation.basePrice) }}</span>
                                 </div>
 
-                                <div v-if="activePromos.length > 0"
+                                <!-- Info isi bundle -->
+                                <div v-if="paymentForm.transaction_type === 'bundle' && selectedItem"
+                                    class="rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 p-3 space-y-1.5">
+                                    <p class="text-[10px] font-black uppercase tracking-wider text-blue-700">Yang Kamu Dapatkan:</p>
+                                    <div class="flex items-center gap-2 text-xs font-semibold text-blue-800">
+                                        <span class="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px]">✓</span>
+                                        Membership {{ selectedItem.membership_duration_in_days }} hari
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs font-semibold text-purple-800">
+                                        <span class="w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-[10px]">✓</span>
+                                        {{ selectedItem.pt_sessions }} sesi Personal Trainer
+                                    </div>
+                                </div>
+
+                                <div v-if="activePromos.length > 0 && paymentForm.transaction_type !== 'bundle'"
                                     class="space-y-1.5 border-l-2 border-green-500 pl-3">
                                     <div v-for="(promo, index) in activePromos" :key="index" class="text-xs">
                                         <div class="flex justify-between text-green-700 font-medium">
@@ -999,7 +1089,8 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
-                            <div class="space-y-2 pt-4">
+                                <!-- Promo code: hanya untuk membership & PT -->
+                            <div v-if="paymentForm.transaction_type !== 'bundle'" class="space-y-2 pt-4">
                                 <div class="flex gap-2">
                                     <div class="relative flex-1">
                                         <Input v-model="paymentForm.promo_code" placeholder="Punya kode promo lain?"
@@ -1056,7 +1147,7 @@ const downloadSVG = () => {
                                         trx.transaction_type }}</span>
                                 </div>
                                 <p class="font-bold text-sm">
-                                    {{ trx.membership?.name || trx.full_pt?.name || trx.installment_pt?.name || 'Paket tidak diketahui' }}
+                                    {{ trx.membership?.name || trx.full_pt?.name || trx.installment_pt?.name || trx.bundle_package?.name || 'Paket tidak diketahui' }}
                                 </p>
                                 <p class="text-xs text-muted-foreground italic">{{ trx.description }}</p>
                             </div>

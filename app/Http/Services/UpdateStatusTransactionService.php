@@ -3,6 +3,7 @@
 namespace App\Http\Services;
 
 use App\Jobs\SendWhatsappBlast;
+use App\Models\MasterBundlePackage;
 use App\Models\MasterMembership;
 use App\Models\MasterPtPackage;
 use App\Models\Transaction;
@@ -191,6 +192,69 @@ class UpdateStatusTransactionService
                     UserPtPackage::where('id', $installment->user_pt_package_id)
                         ->update(['status' => 'done_payment']);
                 }
+            }
+
+            // --- Bundle: Aktifkan Membership + Buat Sesi PT ---
+            if ($transaction->transaction_type == "bundle") {
+                $bundle = MasterBundlePackage::findOrFail($transaction->bundle_package_id);
+
+                // 1. Aktifkan / perpanjang membership (sama seperti alur membership biasa)
+                $userGym = UserGym::where('gym_id', $bundle->gym_id)
+                    ->where('user_id', $transaction->user_id)->first();
+
+                $today = Carbon::now();
+                $startAccess = Carbon::parse($bundle->gym->start_access);
+
+                $specifiedStart = null;
+                if (!empty($transaction->start_at)) {
+                    $specifiedStart = Carbon::parse($transaction->start_at);
+                }
+
+                $membershipDays = $bundle->membership_duration_in_days;
+
+                if (!$userGym) {
+                    $startDate = $specifiedStart ?: ($today->lt($startAccess) ? $startAccess : $today);
+                    UserGym::create([
+                        'user_id'             => $transaction->user_id,
+                        'gym_id'              => $bundle->gym_id,
+                        'membership_start_at' => $startDate,
+                        'membership_end_at'   => $startDate->copy()->addDays($membershipDays),
+                    ]);
+                } else {
+                    $currentEnd = $userGym->membership_end_at ? Carbon::parse($userGym->membership_end_at) : null;
+                    $baseDate = ($currentEnd && !$currentEnd->isPast()) ? $currentEnd : $today;
+
+                    if ($specifiedStart) {
+                        $baseDate = $specifiedStart;
+                    }
+                    if ($baseDate->lt($startAccess)) {
+                        $baseDate = $startAccess;
+                    }
+
+                    if (!$currentEnd || $currentEnd->isPast()) {
+                        $userGym->update([
+                            'membership_start_at' => $baseDate,
+                            'membership_end_at'   => $baseDate->copy()->addDays($membershipDays),
+                        ]);
+                    } else {
+                        $userGym->update([
+                            'membership_end_at' => $baseDate->copy()->addDays($membershipDays),
+                        ]);
+                    }
+                }
+
+                // 2. Buat UserPtPackage untuk sesi PT bonus dari bundle
+                //    pt_package_id = null karena bundle bukan dari master_pt_packages
+                $userPtPackage = UserPtPackage::create([
+                    'pt_package_id'      => null,
+                    'sessions_remaining' => $bundle->pt_sessions,
+                    'status'             => 'done_payment',
+                ]);
+                $userPtPackage->userPtPackageMembers()->create([
+                    'user_id' => $transaction->user_id,
+                ]);
+
+                Log::info("Bundle approved: user_id={$transaction->user_id}, bundle={$bundle->name}, membership={$membershipDays}d, pt_sessions={$bundle->pt_sessions}");
             }
 
             DB::commit();

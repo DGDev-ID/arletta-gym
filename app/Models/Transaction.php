@@ -17,6 +17,7 @@ class Transaction extends Model
         'membership_id',
         'full_pt_id',
         'installment_pt_id',
+        'bundle_package_id',
         'price',
         'midtrans_fee',
         'ppn_fee',
@@ -69,6 +70,11 @@ class Transaction extends Model
     public function installmentPt()
     {
         return $this->belongsTo(UserPtPackageInstalment::class, 'installment_pt_id');
+    }
+
+    public function bundlePackage()
+    {
+        return $this->belongsTo(MasterBundlePackage::class, 'bundle_package_id');
     }
 
     public function transactionDetails()

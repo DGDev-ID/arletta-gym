@@ -8,6 +8,7 @@ use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
 use App\Http\Services\WhatsappBlastService;
 use App\Jobs\SendWhatsappBlast;
+use App\Models\MasterBundlePackage;
 use App\Models\MasterGym;
 use Carbon\Carbon;
 use App\Models\MembershipPromo;
@@ -171,7 +172,7 @@ class ManageUserController extends Controller
         $pendingTransactions = Transaction::where('user_id', $user->id)
             ->where('status', 'pending')
             ->whereIn('method', ['manual', 'debit']) // Termasuk VA/QRIS yang diproses tanpa gateway
-            ->with(['membership', 'fullPt', 'installmentPt']) // Eager load relasi paketnya
+            ->with(['membership', 'fullPt', 'installmentPt', 'bundlePackage']) // Eager load relasi paketnya
             ->latest()
             ->get();
 
@@ -227,6 +228,7 @@ class ManageUserController extends Controller
             'pt_packages' => $gym->ptPackages()->with(['ptPackagePromos' => function ($q) {
                 $q->whereNull('unique_code');
             }])->get(),
+            'bundle_packages' => $gym->bundlePackages()->get(),
         ]);
     }
 
@@ -362,14 +364,16 @@ class ManageUserController extends Controller
                 }
             }],
             'gym_id' => 'required|exists:master_gyms,id',
-            'transaction_type' => ['required', Rule::in(['membership', 'pt'])],
+            'transaction_type' => ['required', Rule::in(['membership', 'pt', 'bundle'])],
             'type_id' => 'required|integer',
             'payment_method' => ['required', Rule::in(['manual', 'va', 'qris'])],
-            'payment_type' => [
+            'payment_type' => array_filter([
                 'nullable',
                 Rule::requiredIf($request->input('transaction_type') === 'pt'),
-                Rule::in(['full_payment', 'dp_payment'])
-            ],
+                $request->input('transaction_type') !== 'bundle'
+                    ? Rule::in(['full_payment', 'dp_payment'])
+                    : null,
+            ]),
             'dp_percent' => [
                 'nullable',
                 Rule::requiredIf($request->input('payment_type') === 'dp_payment'),

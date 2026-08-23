@@ -2,6 +2,7 @@
 
 namespace App\Http\Services;
 
+use App\Models\MasterBundlePackage;
 use App\Models\MasterGym;
 use App\Models\MasterMembership;
 use App\Models\MasterPtPackage;
@@ -49,6 +50,12 @@ class PaymentService
     public static function processPayment(array $data)
     {
         $validated = self::validateRequest($data);
+
+        // Route bundle ke handler tersendiri
+        if ($validated['transaction_type'] === 'bundle') {
+            return self::processBundlePayment($validated);
+        }
+
         $user = User::role('User')->findOrFail($validated['user_id']);
         $gym = MasterGym::findOrFail($validated['gym_id']);
 
@@ -154,6 +161,71 @@ class PaymentService
             ]);
 
             return self::formatResponse($transaction, $isDP, $item->name, $appliedPromos, $bonusValue, $netPrice, $paymentDetails);
+        });
+    }
+
+    /**
+     * Proses pembayaran untuk tipe Bundle (Membership + Sesi PT dalam satu harga).
+     */
+    public static function processBundlePayment(array $validated)
+    {
+        $user = User::role('User')->findOrFail($validated['user_id']);
+        $gym  = MasterGym::findOrFail($validated['gym_id']);
+
+        $bundle = MasterBundlePackage::findOrFail($validated['type_id']);
+
+        if ($bundle->gym_id != $gym->id) {
+            throw ValidationException::withMessages(['type_id' => 'Bundle tidak ditemukan untuk gym yang dipilih.']);
+        }
+
+        $trxMapping = [
+            'manual' => ['m' => 'manual', 'd' => null],
+            'va'     => ['m' => 'debit',   'd' => 'va'],
+            'qris'   => ['m' => 'debit',   'd' => 'qris'],
+        ];
+
+        return DB::transaction(function () use ($validated, $user, $bundle, $trxMapping) {
+            $fee = self::calculatePaymentFee($validated['payment_method'], $bundle->price);
+
+            $transaction = Transaction::create([
+                'user_id'                => $user->id,
+                'method'                 => $trxMapping[$validated['payment_method']]['m'],
+                'method_midtrans_detail' => $trxMapping[$validated['payment_method']]['d'],
+                'transaction_type'       => 'bundle',
+                'bundle_package_id'      => $bundle->id,
+                'price'                  => $bundle->price,
+                'midtrans_fee'           => $fee,
+                'ppn_fee'                => 0,
+                'total_price'            => $bundle->price + $fee,
+                'status'                 => 'pending',
+                'description'            => "[BUNDLE] {$bundle->name}",
+                'sessions_or_days'       => $bundle->membership_duration_in_days,
+            ]);
+
+            if (!empty($validated['start_at'])) {
+                $transaction->start_at = $validated['start_at'];
+                $transaction->save();
+            }
+
+            $transaction->transactionDetails()->create(['status' => 'pending']);
+
+            return [
+                'transaction_id' => $transaction->id,
+                'status'         => 'full',
+                'summary' => [
+                    'item_name'     => $bundle->name,
+                    'membership'    => $bundle->membership_duration_in_days . ' hari',
+                    'pt_sessions'   => $bundle->pt_sessions . ' sesi PT',
+                    'total_net_price' => $bundle->price,
+                ],
+                'payment_1' => [
+                    'label' => 'Full Payment Bundle',
+                    'base'  => $bundle->price,
+                    'ppn'   => 0,
+                    'fee'   => $fee,
+                    'total' => $bundle->price + $fee,
+                ],
+            ];
         });
     }
 
@@ -290,14 +362,21 @@ class PaymentService
             }],
             'gym_id' => 'required|exists:master_gyms,id',
             'installment_pt_id' => ['nullable', 'exists:user_pt_package_instalments,id'],
-            'transaction_type' => ['required', Rule::in(['membership', 'pt'])],
+            'transaction_type' => ['required', Rule::in(['membership', 'pt', 'bundle'])],
             'type_id' => 'required|integer',
             'payment_method' => ['required', Rule::in(['manual', 'va', 'qris'])],
             'start_at' => ['nullable', 'date'],
-            'payment_type' => ['nullable', Rule::requiredIf($data['transaction_type'] === 'pt'), Rule::in(['full_payment', 'dp_payment'])],
-            'dp_percent' => ['nullable', Rule::requiredIf(isset($data['payment_type']) && $data['payment_type'] === 'dp_payment'), 'numeric', 'min:0', 'max:100'],
+            'payment_type' => [
+                'nullable',
+                Rule::requiredIf(isset($data['transaction_type']) && $data['transaction_type'] === 'pt'),
+                Rule::in(['full_payment', 'dp_payment'])
+            ],
+            'dp_percent' => [
+                'nullable',
+                Rule::requiredIf(isset($data['payment_type']) && $data['payment_type'] === 'dp_payment'),
+                'numeric', 'min:0', 'max:100'
+            ],
             'promo_code' => 'nullable|string',
-            // 'trainer_id' => ['nullable', 'exists:users,id'],
         ]);
 
         if ($validator->fails()) {

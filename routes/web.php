@@ -11,6 +11,7 @@ use App\Http\Controllers\Master\MasterGymClassController;
 use App\Http\Controllers\Master\MasterGymController;
 use App\Http\Controllers\Master\MasterMembershipController;
 use App\Http\Controllers\Master\MasterProductController;
+use App\Http\Controllers\Master\MasterBundlePackageController;
 use App\Http\Controllers\Master\MasterPtPackageController;
 use App\Http\Controllers\ScanQRCodeController;
 use App\Http\Controllers\Transaction\HistoryTransactionController;
@@ -46,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
             Route::resource('gym', MasterGymController::class);
             Route::resource('membership', MasterMembershipController::class);
             Route::resource('personal-trainer-package', MasterPtPackageController::class);
+            Route::resource('bundle-package', MasterBundlePackageController::class);
             Route::resource('gym-class', MasterGymClassController::class);
             Route::resource('class-schedule', MasterClassScheduleController::class);
             Route::post('class-schedule/{classSchedule}/bookings', [MasterClassScheduleController::class, 'storeBooking'])->name('class-schedule.bookings.store');
