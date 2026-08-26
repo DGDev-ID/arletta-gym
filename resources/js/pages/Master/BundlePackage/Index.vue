@@ -63,6 +63,7 @@ const formatDays = (days: number) => {
                                 <th class="px-6 py-4">Membership</th>
                                 <th class="px-6 py-4">Sesi PT</th>
                                 <th class="px-6 py-4">Harga Bundle</th>
+                                <th class="px-6 py-4">Promo Aktif</th>
                                 <th class="px-6 py-4 text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -91,6 +92,24 @@ const formatDays = (days: number) => {
                                 <td class="px-6 py-4 font-semibold text-green-700">
                                     {{ formatCurrency(item.price) }}
                                 </td>
+                                <!-- Kolom Promo Aktif -->
+                                <td class="px-6 py-4">
+                                    <div v-if="item.bundle_package_promos && item.bundle_package_promos.length > 0"
+                                        class="flex flex-col gap-2">
+                                        <div v-for="promo in item.bundle_package_promos" :key="promo.id"
+                                            class="flex flex-col border-l-2 pl-2 py-0.5"
+                                            :class="promo.unique_code ? 'border-indigo-400' : 'border-green-500'">
+                                            <span class="text-xs font-bold"
+                                                :class="promo.unique_code ? 'text-indigo-600' : 'text-green-600'">
+                                                {{ promo.unique_code || '🌐 Global' }}
+                                            </span>
+                                            <span class="text-[10px] text-muted-foreground uppercase">
+                                                {{ promo.type.replaceAll('_', ' ') }}: {{ promo.value }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span v-else class="text-muted-foreground text-xs italic">-</span>
+                                </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end items-center gap-3">
                                         <Link :href="`/master/bundle-package/${item.id}/edit`"
@@ -107,7 +126,7 @@ const formatDays = (days: number) => {
                                 </td>
                             </tr>
                             <tr v-if="bundle_packages.length === 0">
-                                <td colspan="7" class="px-6 py-16 text-center">
+                                <td colspan="8" class="px-6 py-16 text-center">
                                     <div class="flex flex-col items-center gap-3 text-muted-foreground">
                                         <Package2 :size="40" class="opacity-30" />
                                         <p class="text-sm">Belum ada paket bundling. Klik <strong>Tambah Paket Bundling</strong> untuk memulai.</p>

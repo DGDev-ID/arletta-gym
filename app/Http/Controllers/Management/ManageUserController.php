@@ -8,6 +8,7 @@ use App\Http\Services\PaymentService;
 use App\Http\Services\UpdateStatusTransactionService;
 use App\Http\Services\WhatsappBlastService;
 use App\Jobs\SendWhatsappBlast;
+use App\Models\BundlePackagePromo;
 use App\Models\MasterBundlePackage;
 use App\Models\MasterGym;
 use Carbon\Carbon;
@@ -228,7 +229,9 @@ class ManageUserController extends Controller
             'pt_packages' => $gym->ptPackages()->with(['ptPackagePromos' => function ($q) {
                 $q->whereNull('unique_code');
             }])->get(),
-            'bundle_packages' => $gym->bundlePackages()->get(),
+            'bundle_packages' => $gym->bundlePackages()->with(['bundlePackagePromos' => function ($q) {
+                $q->whereNull('unique_code');
+            }])->get(),
         ]);
     }
 
@@ -236,17 +239,21 @@ class ManageUserController extends Controller
     {
         $request->validate([
             'code' => 'required|string',
-            'id' => 'required|integer',
-            'type' => 'required|in:membership,pt'
+            'id'   => 'required|integer',
+            'type' => 'required|in:membership,pt,bundle'
         ]);
 
         if ($request->type === 'membership') {
             $promo = MembershipPromo::where('membership_id', $request->id)
-                ->where('unique_code', $request->code)
+                ->where('unique_code', strtoupper($request->code))
+                ->first();
+        } elseif ($request->type === 'bundle') {
+            $promo = BundlePackagePromo::where('bundle_package_id', $request->id)
+                ->where('unique_code', strtoupper($request->code))
                 ->first();
         } else {
             $promo = PtPackagePromo::where('pt_package_id', $request->id)
-                ->where('unique_code', $request->code)
+                ->where('unique_code', strtoupper($request->code))
                 ->first();
         }
 

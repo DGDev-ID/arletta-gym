@@ -243,11 +243,12 @@ const handleGeneratePayment = async () => {
             payment_method: paymentForm.value.payment_type,
         };
 
-        // Bundle: always full payment, no promo
+        // Bundle: promo support
         if (paymentForm.value.transaction_type === 'bundle') {
             if (membershipStartInput.value) {
                 payload.start_at = membershipStartInput.value;
             }
+            payload.promo_code = paymentForm.value.promo_code || null;
         } else if (paymentForm.value.transaction_type === 'membership') {
             payload.payment_type = paymentForm.value.payment_mode;
             payload.dp_percent = paymentForm.value.payment_mode === 'dp_payment' ? paymentForm.value.dp_percent : null;
@@ -293,19 +294,11 @@ const calculation = computed(() => {
     const calculation_basePrice = selectedItem.value?.price || 0;
     const isBundle = paymentForm.value.transaction_type === 'bundle';
 
-    // Bundle: harga fixed, tidak ada promo
-    if (isBundle) {
+    // Bundle: promo tetap bisa berlaku
+    if (isBundle && !selectedItem.value) {
         return {
-            basePrice: calculation_basePrice,
-            totalDiscount: 0,
-            totalBonusDays: 0,
-            totalBonusSessions: 0,
-            subtotal: calculation_basePrice,
-            ppn: 0,
-            fee: 0,
-            grandTotal: calculation_basePrice,
-            payableNow: calculation_basePrice,
-            remaining: 0,
+            basePrice: 0, totalDiscount: 0, totalBonusDays: 0, totalBonusSessions: 0,
+            subtotal: 0, ppn: 0, fee: 0, grandTotal: 0, payableNow: 0, remaining: 0,
         };
     }
 
@@ -363,9 +356,15 @@ const calculation = computed(() => {
 
 const activePromos = computed(() => {
     if (!selectedItem.value) return [];
-    const globals = paymentForm.value.transaction_type === 'membership'
-        ? (selectedItem.value.membership_promos || [])
-        : (selectedItem.value.pt_package_promos || []);
+    let globals: any[] = [];
+
+    if (paymentForm.value.transaction_type === 'membership') {
+        globals = selectedItem.value.membership_promos || [];
+    } else if (paymentForm.value.transaction_type === 'bundle') {
+        globals = selectedItem.value.bundle_package_promos || [];
+    } else {
+        globals = selectedItem.value.pt_package_promos || [];
+    }
 
     const allPromos = [...globals];
     if (appliedManualPromo.value) {
@@ -821,7 +820,7 @@ const downloadSVG = () => {
 
                             <div v-if="paymentForm.gym_id" class="space-y-2">
                                 <label class="text-xs font-bold uppercase text-muted-foreground">Jenis Transaksi</label>
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid grid-cols-3 gap-3">
                                     <button type="button" @click="paymentForm.transaction_type = 'membership'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'membership' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Membership</button>
@@ -998,18 +997,24 @@ const downloadSVG = () => {
                                     </div>
                                 </div>
 
-                                <div v-if="activePromos.length > 0 && paymentForm.transaction_type !== 'bundle'"
+                                <div v-if="activePromos.length > 0"
                                     class="space-y-1.5 border-l-2 border-green-500 pl-3">
                                     <div v-for="(promo, index) in activePromos" :key="index" class="text-xs">
                                         <div class="flex justify-between text-green-700 font-medium">
-                                            <span>{{ promo.unique_code === null ? '✨ Promo Global' : '🎫 Kode: ' +
-                                                promo.unique_code }}</span>
-                                            <span v-if="promo.type.includes('discount')">
+                                            <div class="flex flex-col">
+                                                <span>{{ promo.unique_code === null ? '✨ Promo Global' : '🎫 Kode: ' + promo.unique_code }}</span>
+                                                <span class="text-[10px] text-muted-foreground font-normal mt-0.5">
+                                                    <template v-if="promo.type === 'discount_percent'">Diskon {{ promo.value }}%</template>
+                                                    <template v-else-if="promo.type === 'discount_amount'">Potongan {{ formatRupiah(promo.value) }}</template>
+                                                    <template v-else-if="promo.type === 'bonus_days'">Bonus {{ promo.value }} Hari Membership</template>
+                                                    <template v-else-if="promo.type === 'bonus_sessions'">Bonus {{ promo.value }} Sesi Personal Trainer</template>
+                                                </span>
+                                            </div>
+                                            <span v-if="promo.type.includes('discount')" class="shrink-0 ml-2">
                                                 - {{ formatRupiah(promo.type === 'discount_percent' ?
-                                                    calculation.basePrice *
-                                                    (promo.value / 100) : promo.value) }}
+                                                    calculation.basePrice * (promo.value / 100) : promo.value) }}
                                             </span>
-                                            <span v-else class="text-blue-600 font-bold">
+                                            <span v-else class="text-blue-600 font-bold shrink-0 ml-2">
                                                 +{{ promo.value }} {{ promo.type === 'bonus_days' ? 'Hari' : 'Sesi' }}
                                             </span>
                                         </div>
@@ -1069,8 +1074,8 @@ const downloadSVG = () => {
                                 </div>
                             </div>
 
-                                <!-- Promo code: hanya untuk membership & PT -->
-                            <div v-if="paymentForm.transaction_type !== 'bundle'" class="space-y-2 pt-4">
+                                <!-- Promo code: untuk membership, PT, dan bundle -->
+                            <div v-if="paymentForm.selected_item_id" class="space-y-2 pt-4">
                                 <div class="flex gap-2">
                                     <div class="relative flex-1">
                                         <Input
@@ -1078,6 +1083,7 @@ const downloadSVG = () => {
                                             placeholder="Punya kode promo lain?"
                                             class="rounded-xl h-11 pr-10 uppercase"
                                             style="text-transform: uppercase"
+                                            @keydown.space.prevent
                                             @input="(e: any) => { paymentForm.promo_code = e.target.value.toUpperCase().replace(/\s/g, '') }"
                                         />
                                         <button v-if="appliedManualPromo"

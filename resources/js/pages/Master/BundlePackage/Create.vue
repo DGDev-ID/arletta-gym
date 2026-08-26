@@ -22,7 +22,16 @@ const form = useForm({
     membership_duration_in_days: '',
     pt_sessions: '',
     price: '',
+    promos: [{ unique_code: '', type: 'discount_percent', value: '' }] as { unique_code: string; type: string; value: string | number }[],
 });
+
+const addPromo = () => {
+    form.promos.push({ unique_code: '', type: 'discount_percent', value: '' });
+};
+
+const removePromo = (index: number) => {
+    form.promos.splice(index, 1);
+};
 
 const submit = () => {
     form.post('/master/bundle-package');
@@ -122,6 +131,65 @@ const submit = () => {
                                              Harga Bundle: Rp {{ Number(form.price).toLocaleString('id-ID') }}
                                         </li>
                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-6" />
+
+                        <!-- Daftar Promo -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-semibold text-sm italic text-muted-foreground">Daftar Promo</h3>
+                                <button type="button" @click="addPromo"
+                                    class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition">
+                                    + Tambah Promo
+                                </button>
+                            </div>
+
+                            <div v-for="(promo, index) in form.promos" :key="index"
+                                class="p-5 border rounded-xl bg-muted/20 relative space-y-4 shadow-sm">
+
+                                <button v-if="form.promos.length > 0" type="button" @click="removePromo(Number(index))"
+                                    class="absolute -top-2 -right-2 bg-destructive text-white rounded-full w-6 h-6 text-xs flex items-center justify-center hover:bg-destructive/90 shadow">
+                                    ✕
+                                </button>
+
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium">Kode Unik Promo</label>
+                                    <Input
+                                        v-model="promo.unique_code"
+                                        placeholder="Kosongkan untuk promo global (otomatis aktif)"
+                                        style="text-transform: uppercase"
+                                        @keydown.space.prevent
+                                        @input="(e: any) => { promo.unique_code = e.target.value.toUpperCase().replace(/\s/g, '') }"
+                                    />
+                                    <p class="text-[11px] text-muted-foreground">Kosongkan = promo aktif otomatis untuk semua. Isi = perlu kode khusus.</p>
+                                    <p v-if="(form.errors as any)[`promos.${index}.unique_code`]"
+                                        class="text-xs text-destructive">
+                                        {{ (form.errors as any)[`promos.${index}.unique_code`] }}
+                                    </p>
+                                </div>
+
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-medium uppercase tracking-wider text-gray-500">Tipe</label>
+                                        <select v-model="promo.type"
+                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20">
+                                            <option value="discount_percent">Diskon (%)</option>
+                                            <option value="discount_amount">Potongan Harga (Rp)</option>
+                                            <option value="bonus_days">Bonus Hari Membership</option>
+                                            <option value="bonus_sessions">Bonus Sesi PT</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-medium">Nilai</label>
+                                        <Input v-model="promo.value" type="number" />
+                                        <p v-if="(form.errors as any)[`promos.${index}.value`]"
+                                            class="text-xs text-destructive">
+                                            {{ (form.errors as any)[`promos.${index}.value`] }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -21,6 +21,11 @@ class MasterBundlePackage extends Model
         return $this->belongsTo(MasterGym::class, 'gym_id');
     }
 
+    public function bundlePackagePromos()
+    {
+        return $this->hasMany(BundlePackagePromo::class, 'bundle_package_id');
+    }
+
     public function transactions()
     {
         return $this->hasMany(\App\Models\Transaction::class, 'bundle_package_id');

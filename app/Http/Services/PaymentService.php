@@ -166,13 +166,14 @@ class PaymentService
 
     /**
      * Proses pembayaran untuk tipe Bundle (Membership + Sesi PT dalam satu harga).
+     * Mendukung promo kode (discount_percent / discount_amount).
      */
     public static function processBundlePayment(array $validated)
     {
         $user = User::role('User')->findOrFail($validated['user_id']);
         $gym  = MasterGym::findOrFail($validated['gym_id']);
 
-        $bundle = MasterBundlePackage::findOrFail($validated['type_id']);
+        $bundle = MasterBundlePackage::with('bundlePackagePromos')->findOrFail($validated['type_id']);
 
         if ($bundle->gym_id != $gym->id) {
             throw ValidationException::withMessages(['type_id' => 'Bundle tidak ditemukan untuk gym yang dipilih.']);
@@ -185,7 +186,40 @@ class PaymentService
         ];
 
         return DB::transaction(function () use ($validated, $user, $bundle, $trxMapping) {
-            $fee = self::calculatePaymentFee($validated['payment_method'], $bundle->price);
+            $basePrice     = (float) $bundle->price;
+            $totalDiscount = 0;
+            $appliedPromos = [];
+
+            // 1. Kumpulkan promo global (unique_code = null)
+            $globals = $bundle->bundlePackagePromos->whereNull('unique_code');
+            foreach ($globals as $promo) {
+                if ($promo->type === 'discount_percent') {
+                    $totalDiscount += $basePrice * ($promo->value / 100);
+                } elseif ($promo->type === 'discount_amount') {
+                    $totalDiscount += (float) $promo->value;
+                }
+                $appliedPromos[] = $promo;
+            }
+
+            // 2. Promo dari kode manual (unique_code tidak null)
+            if (!empty($validated['promo_code'])) {
+                $manualPromo = $bundle->bundlePackagePromos
+                    ->whereNotNull('unique_code')
+                    ->where('unique_code', strtoupper($validated['promo_code']))
+                    ->first();
+
+                if ($manualPromo) {
+                    if ($manualPromo->type === 'discount_percent') {
+                        $totalDiscount += $basePrice * ($manualPromo->value / 100);
+                    } elseif ($manualPromo->type === 'discount_amount') {
+                        $totalDiscount += (float) $manualPromo->value;
+                    }
+                    $appliedPromos[] = $manualPromo;
+                }
+            }
+
+            $netPrice = max(0, $basePrice - $totalDiscount);
+            $fee      = self::calculatePaymentFee($validated['payment_method'], $netPrice);
 
             $transaction = Transaction::create([
                 'user_id'                => $user->id,
@@ -193,12 +227,12 @@ class PaymentService
                 'method_midtrans_detail' => $trxMapping[$validated['payment_method']]['d'],
                 'transaction_type'       => 'bundle',
                 'bundle_package_id'      => $bundle->id,
-                'price'                  => $bundle->price,
+                'price'                  => $netPrice,
                 'midtrans_fee'           => $fee,
                 'ppn_fee'                => 0,
-                'total_price'            => $bundle->price + $fee,
+                'total_price'            => $netPrice + $fee,
                 'status'                 => 'pending',
-                'description'            => "[BUNDLE] {$bundle->name}",
+                'description'            => "[BUNDLE] {$bundle->name}" . ($totalDiscount > 0 ? " (diskon Rp " . number_format($totalDiscount, 0, ',', '.') . ")" : ''),
                 'sessions_or_days'       => $bundle->membership_duration_in_days,
             ]);
 
@@ -213,17 +247,18 @@ class PaymentService
                 'transaction_id' => $transaction->id,
                 'status'         => 'full',
                 'summary' => [
-                    'item_name'     => $bundle->name,
-                    'membership'    => $bundle->membership_duration_in_days . ' hari',
-                    'pt_sessions'   => $bundle->pt_sessions . ' sesi PT',
-                    'total_net_price' => $bundle->price,
+                    'item_name'        => $bundle->name,
+                    'membership'       => $bundle->membership_duration_in_days . ' hari',
+                    'pt_sessions'      => $bundle->pt_sessions . ' sesi PT',
+                    'total_net_price'  => $netPrice,
+                    'total_discount'   => $totalDiscount,
                 ],
                 'payment_1' => [
                     'label' => 'Full Payment Bundle',
-                    'base'  => $bundle->price,
+                    'base'  => $netPrice,
                     'ppn'   => 0,
                     'fee'   => $fee,
-                    'total' => $bundle->price + $fee,
+                    'total' => $netPrice + $fee,
                 ],
             ];
         });
