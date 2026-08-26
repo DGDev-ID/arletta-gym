@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountVerificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\BundlePackageApiController;
 use App\Http\Controllers\Api\MembershipApiController;
 use App\Http\Controllers\Api\PtPackageApiController;
 use App\Http\Controllers\Api\PaymentController;
@@ -51,6 +52,10 @@ Route::get('/memberships/{id}', [MembershipApiController::class, 'show']);
 // PT packages for landing
 Route::get('/pt-packages', [PtPackageApiController::class, 'index']);
 Route::get('/pt-packages/{id}', [PtPackageApiController::class, 'show']);
+
+// Bundle packages for landing
+Route::get('/bundle-packages', [BundlePackageApiController::class, 'index']);
+Route::get('/bundle-packages/{id}', [BundlePackageApiController::class, 'show']);
 
 // Master gyms for landing select
 Route::get('/gyms', [GymController::class, 'index']);
