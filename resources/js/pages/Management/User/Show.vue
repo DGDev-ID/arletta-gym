@@ -829,11 +829,11 @@ const downloadSVG = () => {
                                         :class="paymentForm.transaction_type === 'pt' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">Personal
                                         Trainer</button>
-                                    <!-- <button type="button" @click="paymentForm.transaction_type = 'bundle'; paymentForm.selected_item_id = ''"
+                                    <button type="button" @click="paymentForm.transaction_type = 'bundle'; paymentForm.selected_item_id = ''"
                                         :class="paymentForm.transaction_type === 'bundle' ? 'bg-primary text-white' : 'bg-muted'"
                                         class="p-3 rounded-xl text-sm font-medium transition-all">
                                         Bundle
-                                    </button> -->
+                                    </button>
                                 </div>
                             </div>
 
