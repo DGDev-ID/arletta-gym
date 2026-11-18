@@ -44,7 +44,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard/export-csv', [DashboardController::class, 'exportCsv'])->name('dashboard.export-csv');
 
     Route::middleware(['role:Super Admin'])->group(function () {
-        Route::get('backup-database', [BackupDatabaseController::class, 'index'])->name('backup-database.index');
+        Route::prefix('management')->name('management.')->group(function () {
+            Route::get('backup-databases', [BackupDatabaseController::class, 'index'])->name('backup-databases.index');
+            Route::post('backup-databases', [BackupDatabaseController::class, 'store'])->name('backup-databases.store');
+            Route::delete('backup-databases/{backupDatabase}', [BackupDatabaseController::class, 'destroy'])->name('backup-databases.destroy');
+            Route::get('backup-databases/{backupDatabase}/download', [BackupDatabaseController::class, 'download'])->name('backup-databases.download');
+        });
+
+        // Legacy redirect/fallback
+        Route::get('backup-database', fn () => redirect()->route('management.backup-databases.index'))->name('backup-database.index');
         Route::post('backup-database/dispatch', [BackupDatabaseController::class, 'dispatch'])->name('backup-database.dispatch');
 
         Route::prefix('master')->name('master.')->group(function () {

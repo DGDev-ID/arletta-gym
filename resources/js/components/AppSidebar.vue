@@ -139,7 +139,7 @@ const scanNavItems: NavItem[] = [
 const systemNavItems: NavItem[] = [
     {
         title: "Backup Database",
-        href: '/backup-database',
+        href: '/management/backup-databases',
         icon: Database,
         roles: ["Super Admin"]
     },

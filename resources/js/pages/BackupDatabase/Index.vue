@@ -1,177 +1,440 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
-import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router } from '@inertiajs/vue3';
+import { useDebounceFn } from '@vueuse/core';
+import {
+    AlertCircle,
+    Check,
+    Copy,
+    Database,
+    Download,
+    ExternalLink,
+    HardDriveDownload,
+    Loader2,
+    RefreshCw,
+    Search,
+    Trash2,
+} from 'lucide-vue-next';
+import { Notyf } from 'notyf';
+import { ref, watch } from 'vue';
 
-interface BackupRecord {
+interface BackupItem {
     id: number;
     name: string;
-    url: string | null;
-    created_at: string;
+    url: string;
+    created_at: string | null;
+    created_at_formatted: string | null;
+    created_at_diff: string | null;
 }
 
-defineProps<{
-    backups: {
-        data: BackupRecord[];
-        links: any[];
-        total: number;
-    };
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface Paginator<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    links: PaginationLink[];
+}
+
+const props = defineProps<{
+    backups: Paginator<BackupItem>;
+    filters: { search: string };
 }>();
 
-const breadcrumbItems = [
-    { title: 'Backup Database', href: '/backup-database' },
+const notyf = new Notyf({
+    duration: 3500,
+    position: { x: 'right', y: 'bottom' },
+    ripple: true,
+    dismissible: true,
+});
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Backup Database', href: '/management/backup-databases' },
 ];
 
-const showConfirmModal = ref(false);
+const search = ref(props.filters?.search ?? '');
+const isRefreshing = ref(false);
 const isDispatching = ref(false);
+const isDeleting = ref(false);
 
-function openConfirm() {
-    showConfirmModal.value = true;
-}
+const showBackupConfirmDialog = ref(false);
+const showDeleteDialog = ref(false);
+const backupToDelete = ref<BackupItem | null>(null);
+const copiedId = ref<number | null>(null);
 
-function closeConfirm() {
-    showConfirmModal.value = false;
-}
+const applyFilter = useDebounceFn(() => {
+    router.get(
+        '/management/backup-databases',
+        { search: search.value },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+}, 300);
 
-function confirmBackup() {
-    isDispatching.value = true;
-    router.post('/backup-database/dispatch', {}, {
+watch(search, applyFilter);
+
+const refreshData = () => {
+    isRefreshing.value = true;
+    router.reload({
         onFinish: () => {
-            isDispatching.value = false;
-            showConfirmModal.value = false;
+            isRefreshing.value = false;
         },
     });
-}
+};
 
-function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleString('id-ID', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
+const handleConfirmBackup = () => {
+    isDispatching.value = true;
+    router.post(
+        '/management/backup-databases',
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showBackupConfirmDialog.value = false;
+            },
+            onError: () => {
+                notyf.error('Gagal mendispatch Job Backup Database.');
+            },
+            onFinish: () => {
+                isDispatching.value = false;
+            },
+        },
+    );
+};
+
+const confirmDelete = (backup: BackupItem) => {
+    backupToDelete.value = backup;
+    showDeleteDialog.value = true;
+};
+
+const handleDelete = () => {
+    if (!backupToDelete.value) return;
+
+    isDeleting.value = true;
+    router.delete(`/management/backup-databases/${backupToDelete.value.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteDialog.value = false;
+            backupToDelete.value = null;
+        },
+        onError: () => {
+            notyf.error('Gagal menghapus data backup database.');
+        },
+        onFinish: () => {
+            isDeleting.value = false;
+        },
     });
-}
+};
+
+const copyUrl = async (backup: BackupItem) => {
+    try {
+        await navigator.clipboard.writeText(backup.url);
+        copiedId.value = backup.id;
+        notyf.success('URL backup berhasil disalin ke clipboard!');
+        setTimeout(() => {
+            if (copiedId.value === backup.id) {
+                copiedId.value = null;
+            }
+        }, 2000);
+    } catch {
+        notyf.error('Gagal menyalin URL.');
+    }
+};
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Backup Database" />
+    <Head title="Backup Database" />
 
+    <AppLayout :breadcrumbs="breadcrumbs">
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
-
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+                <!-- Header -->
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Heading
                         title="Backup Database"
-                        description="Kelola backup database dan lihat riwayat backup yang telah dilakukan."
+                        :description="`Kelola riwayat backup database PostgreSQL dan pencadangan S3/Cloud Storage. Total: ${backups.total}`"
                     />
 
-                    <button
-                        @click="openConfirm"
-                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity shadow-sm"
-                    >
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        Backup Database
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            class="cursor-pointer gap-2"
+                            :disabled="isRefreshing"
+                            @click="refreshData"
+                        >
+                            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': isRefreshing }" />
+                            <span>Segarkan</span>
+                        </Button>
+
+                        <Button
+                            class="cursor-pointer gap-2 shadow-sm"
+                            @click="showBackupConfirmDialog = true"
+                        >
+                            <HardDriveDownload class="h-4 w-4" />
+                            <span>Backup Database</span>
+                        </Button>
+                    </div>
                 </div>
 
-                <!-- Data Table -->
-                <div class="rounded-xl border bg-background overflow-hidden shadow-sm">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-muted/50 text-muted-foreground font-medium border-b">
-                            <tr>
-                                <th class="px-6 py-4">#</th>
-                                <th class="px-6 py-4">Nama File</th>
-                                <th class="px-6 py-4">URL</th>
-                                <th class="px-6 py-4">Tanggal Backup</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y">
-                            <tr v-for="(backup, idx) in backups.data" :key="backup.id" class="hover:bg-muted/20 transition-colors">
-                                <td class="px-6 py-4 text-muted-foreground">{{ idx + 1 }}</td>
-                                <td class="px-6 py-4 font-medium font-mono text-xs">{{ backup.name }}</td>
-                                <td class="px-6 py-4">
-                                    <a
-                                        v-if="backup.url"
-                                        :href="backup.url"
-                                        target="_blank"
-                                        class="text-primary hover:underline inline-flex items-center gap-1 text-xs"
-                                    >
-                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Download
-                                    </a>
-                                    <span v-else class="text-xs text-muted-foreground italic">-</span>
-                                </td>
-                                <td class="px-6 py-4 text-muted-foreground">{{ formatDate(backup.created_at) }}</td>
-                            </tr>
-                            <tr v-if="backups.data.length === 0">
-                                <td colspan="4" class="px-6 py-10 text-center text-muted-foreground italic">
-                                    Belum ada data backup.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Info Box -->
+                <div class="rounded-xl border bg-background p-4 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="rounded-lg bg-primary/10 p-2 text-primary">
+                            <Database class="h-5 w-5" />
+                        </div>
+                        <div class="space-y-1 text-sm">
+                            <p class="font-medium text-foreground">Pencadangan Database Otomatis & Terjadwal</p>
+                            <p class="text-xs text-muted-foreground sm:text-sm">
+                                Proses backup mengeksekusi perintah <code>pg_dump</code> versi 18 untuk mendump database PostgreSQL, kemudian mengunggah hasilnya ke cloud storage melalui <code>S3Helper</code>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="p-4 border-t bg-background">
+                <!-- Filter & Search Bar -->
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="relative w-full max-w-sm">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            v-model="search"
+                            placeholder="Cari file backup..."
+                            class="pl-9"
+                        />
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                        Menampilkan {{ backups.from ?? 0 }} - {{ backups.to ?? 0 }} dari {{ backups.total }} backup
+                    </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="overflow-hidden rounded-xl border bg-background shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+                                <tr>
+                                    <th class="w-14 px-4 py-3.5 text-center">#</th>
+                                    <th class="px-4 py-3.5">Nama File Backup</th>
+                                    <th class="px-4 py-3.5">URL Storage</th>
+                                    <th class="px-4 py-3.5">Waktu Backup</th>
+                                    <th class="px-4 py-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                <tr v-if="backups.data.length === 0">
+                                    <td colspan="5" class="py-12 text-center">
+                                        <div class="flex flex-col items-center justify-center gap-3">
+                                            <div class="rounded-full bg-muted p-3 text-muted-foreground">
+                                                <Database class="h-6 w-6" />
+                                            </div>
+                                            <div class="space-y-1 text-center">
+                                                <p class="font-medium text-foreground">Belum ada riwayat backup database</p>
+                                                <p class="text-xs text-muted-foreground">
+                                                    Klik tombol "Backup Database" di atas untuk membuat cadangan pertama Anda.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                class="mt-2 cursor-pointer gap-2"
+                                                @click="showBackupConfirmDialog = true"
+                                            >
+                                                <HardDriveDownload class="h-4 w-4" />
+                                                <span>Backup Database Sekarang</span>
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr
+                                    v-for="(backup, idx) in backups.data"
+                                    :key="backup.id"
+                                    class="transition-colors hover:bg-muted/40"
+                                >
+                                    <td class="px-4 py-3.5 text-center font-mono text-xs text-muted-foreground">
+                                        {{ (backups.current_page - 1) * 10 + idx + 1 }}
+                                    </td>
+                                    <td class="px-4 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                                                <Database class="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p class="font-mono text-xs font-semibold text-foreground sm:text-sm">
+                                                    {{ backup.name }}
+                                                </p>
+                                                <span class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                                    PostgreSQL Dump (.sql)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="max-w-xs px-4 py-3.5">
+                                        <div class="flex items-center gap-1.5">
+                                            <a
+                                                :href="backup.url"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex max-w-[220px] items-center gap-1 truncate text-xs text-primary hover:underline"
+                                                :title="backup.url"
+                                            >
+                                                <span class="truncate">{{ backup.url }}</span>
+                                                <ExternalLink class="h-3 w-3 shrink-0" />
+                                            </a>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                class="h-7 w-7 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                                                title="Salin URL"
+                                                @click="copyUrl(backup)"
+                                            >
+                                                <Check v-if="copiedId === backup.id" class="h-3.5 w-3.5 text-green-600" />
+                                                <Copy v-else class="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3.5">
+                                        <div class="space-y-0.5">
+                                            <p class="text-xs font-medium text-foreground sm:text-sm">
+                                                {{ backup.created_at_formatted ?? '-' }}
+                                            </p>
+                                            <p class="text-[11px] text-muted-foreground">
+                                                {{ backup.created_at_diff }}
+                                            </p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3.5 text-right">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                class="h-8 cursor-pointer gap-1.5 text-xs"
+                                                as-child
+                                            >
+                                                <a
+                                                    :href="`/management/backup-databases/${backup.id}/download`"
+                                                    target="_blank"
+                                                    download
+                                                >
+                                                    <Download class="h-3.5 w-3.5" />
+                                                    <span class="hidden sm:inline">Download</span>
+                                                </a>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                class="h-8 w-8 cursor-pointer text-destructive hover:bg-destructive/10"
+                                                title="Hapus riwayat"
+                                                @click="confirmDelete(backup)"
+                                            >
+                                                <Trash2 class="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div v-if="backups.total > 0" class="border-t p-4">
                         <Pagination :links="backups.links" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Confirmation Modal -->
-        <Teleport to="body">
-            <div
-                v-if="showConfirmModal"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-                @click.self="closeConfirm"
-            >
-                <div class="bg-background rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border">
-                    <div class="flex flex-col items-center gap-4 text-center">
-                        <div class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-500">
-                            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                            </svg>
-                        </div>
+        <!-- Modal Konfirmasi Backup Database -->
+        <Dialog v-model:open="showBackupConfirmDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <HardDriveDownload class="h-5 w-5" />
+                    </div>
+                    <DialogTitle>Konfirmasi Backup Database</DialogTitle>
+                    <DialogDescription class="pt-2 text-sm text-muted-foreground">
+                        Apakah Anda yakin ingin melakukan backup database sekarang?
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-3.5 text-xs text-muted-foreground">
+                    <div class="flex items-start gap-2">
+                        <AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         <div>
-                            <h3 class="text-lg font-semibold text-foreground">Konfirmasi Backup</h3>
-                            <p class="mt-1 text-sm text-muted-foreground">
-                                Apakah Anda yakin ingin melakukan backup database sekarang? Proses ini akan berjalan di background.
-                            </p>
-                        </div>
-                        <div class="flex gap-3 w-full">
-                            <button
-                                @click="closeConfirm"
-                                class="flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
-                                :disabled="isDispatching"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                @click="confirmBackup"
-                                class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-                                :disabled="isDispatching"
-                            >
-                                <span v-if="isDispatching" class="inline-flex items-center gap-2">
-                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Memproses...
-                                </span>
-                                <span v-else>Oke, Backup</span>
-                            </button>
+                            Job <strong>BackupDatabase</strong> akan di-dispatch ke antrian latar belakang untuk mengeksekusi <code>pg_dump</code> dan mengunggah hasilnya ke cloud storage melalui <code>S3Helper</code>.
                         </div>
                     </div>
                 </div>
-            </div>
-        </Teleport>
+
+                <DialogFooter class="mt-4 gap-2 sm:gap-0">
+                    <DialogClose as-child>
+                        <Button variant="secondary" :disabled="isDispatching" class="cursor-pointer">
+                            Batal
+                        </Button>
+                    </DialogClose>
+                    <Button
+                        class="cursor-pointer gap-2"
+                        :disabled="isDispatching"
+                        @click="handleConfirmBackup"
+                    >
+                        <Loader2 v-if="isDispatching" class="h-4 w-4 animate-spin" />
+                        <span>{{ isDispatching ? 'Memproses...' : 'Oke' }}</span>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Modal Konfirmasi Hapus Riwayat Backup -->
+        <Dialog v-model:open="showDeleteDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                        <Trash2 class="h-5 w-5" />
+                    </div>
+                    <DialogTitle>Hapus Data Backup</DialogTitle>
+                    <DialogDescription class="pt-2 text-sm text-muted-foreground">
+                        Apakah Anda yakin ingin menghapus catatan backup:
+                        <strong class="mt-1 block font-mono text-foreground">{{ backupToDelete?.name }}</strong>
+                    </DialogDescription>
+                </DialogHeader>
+
+                <DialogFooter class="mt-4 gap-2 sm:gap-0">
+                    <DialogClose as-child>
+                        <Button variant="secondary" :disabled="isDeleting" class="cursor-pointer">
+                            Batal
+                        </Button>
+                    </DialogClose>
+                    <Button
+                        variant="destructive"
+                        class="cursor-pointer gap-2"
+                        :disabled="isDeleting"
+                        @click="handleDelete"
+                    >
+                        <Loader2 v-if="isDeleting" class="h-4 w-4 animate-spin" />
+                        <span>{{ isDeleting ? 'Menghapus...' : 'Hapus' }}</span>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
