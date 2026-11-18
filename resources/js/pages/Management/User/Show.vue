@@ -11,6 +11,7 @@ import Heading from '@/components/Heading.vue';
 import Input from "@/components/ui/input/Input.vue";
 import Textarea from "@/components/ui/textarea/Textarea.vue";
 import AppLayout from '@/layouts/AppLayout.vue';
+import DatePicker from '@/components/ui/date-picker/DatePicker.vue';
 import QrcodeVue from 'qrcode.vue'
 import { router } from '@inertiajs/vue3';
 import { Notyf } from 'notyf';
@@ -722,7 +723,7 @@ const downloadSVG = () => {
                                             class="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                                             <Calendar :size="12" /> Tanggal Lahir
                                         </label>
-                                        <Input v-model="form.birth_date" type="date" class="rounded-xl" />
+                                        <DatePicker v-model="form.birth_date" />
                                     </div>
                                     <div class="space-y-2">
                                         <label
@@ -894,10 +895,8 @@ const downloadSVG = () => {
                                 <template v-if="showMembershipDateInput">
                                     <label class="text-xs font-medium uppercase text-muted-foreground">Tanggal Mulai / Selesai</label>
                                     <div class="grid grid-cols-2 gap-3">
-                                        <input type="date" v-model="membershipStartInput"
-                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
-                                        <input type="date" :value="toISODate(editableMembershipEndDate)" disabled
-                                            class="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+                                        <DatePicker v-model="membershipStartInput" />
+                                        <DatePicker :model-value="toISODate(editableMembershipEndDate)" disabled />
                                     </div>
                                 </template>
 

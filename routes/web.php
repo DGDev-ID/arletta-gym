@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BackupDatabaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Management\ManageAdminController;
 use App\Http\Controllers\Management\ManageCheckInController;
@@ -43,6 +44,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard/export-csv', [DashboardController::class, 'exportCsv'])->name('dashboard.export-csv');
 
     Route::middleware(['role:Super Admin'])->group(function () {
+        Route::get('backup-database', [BackupDatabaseController::class, 'index'])->name('backup-database.index');
+        Route::post('backup-database/dispatch', [BackupDatabaseController::class, 'dispatch'])->name('backup-database.dispatch');
+
         Route::prefix('master')->name('master.')->group(function () {
             Route::resource('gym', MasterGymController::class);
             Route::resource('membership', MasterMembershipController::class);

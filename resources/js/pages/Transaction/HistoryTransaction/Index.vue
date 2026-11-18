@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Pagination from '@/components/Pagination.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import DatePicker from '@/components/ui/date-picker/DatePicker.vue';
 import { BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
@@ -280,15 +281,13 @@ const showFilter = ref(false);
                         <!-- Date Start Filter -->
                         <div class="space-y-3">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dari Tanggal</h4>
-                            <input type="date" v-model="selectedDateStart"
-                                class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" />
+                            <DatePicker v-model="selectedDateStart" />
                         </div>
 
                         <!-- Date End Filter -->
                         <div class="space-y-3">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sampai Tanggal</h4>
-                            <input type="date" v-model="selectedDateEnd"
-                                class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" />
+                            <DatePicker v-model="selectedDateEnd" />
                         </div>
                     </div>
 

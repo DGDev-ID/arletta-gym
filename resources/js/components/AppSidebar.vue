@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { CalendarDays, ClipboardList, CreditCard, Dumbbell, Gift, History, LayoutGrid, Package, Package2, ShieldCheck, UserCog, Users, BookOpen, ScanLine } from 'lucide-vue-next';
+import { CalendarDays, ClipboardList, CreditCard, Database, Dumbbell, Gift, History, LayoutGrid, Package, Package2, ShieldCheck, UserCog, Users, BookOpen, ScanLine } from 'lucide-vue-next';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -135,6 +135,15 @@ const scanNavItems: NavItem[] = [
         roles: ["Super Admin", "Admin"]
     },
 ];
+
+const systemNavItems: NavItem[] = [
+    {
+        title: "Backup Database",
+        href: '/backup-database',
+        icon: Database,
+        roles: ["Super Admin"]
+    },
+];
 </script>
 
 <template>
@@ -157,6 +166,7 @@ const scanNavItems: NavItem[] = [
             <NavMain title="Management" :items="managementNavItems" />
             <NavMain title="Transaction" :items="transactionNavItems" />
             <NavMain title="Scan" :items="scanNavItems" />
+            <NavMain title="System" :items="systemNavItems" />
         </SidebarContent>
 
         <SidebarFooter>
