@@ -46,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:Super Admin'])->group(function () {
         Route::prefix('management')->name('management.')->group(function () {
             Route::get('backup-databases', [BackupDatabaseController::class, 'index'])->name('backup-databases.index');
+            Route::get('backup-databases/status', [BackupDatabaseController::class, 'status'])->name('backup-databases.status');
             Route::post('backup-databases', [BackupDatabaseController::class, 'store'])->name('backup-databases.store');
             Route::delete('backup-databases/{backupDatabase}', [BackupDatabaseController::class, 'destroy'])->name('backup-databases.destroy');
             Route::get('backup-databases/{backupDatabase}/download', [BackupDatabaseController::class, 'download'])->name('backup-databases.download');
